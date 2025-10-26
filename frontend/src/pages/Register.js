@@ -41,7 +41,7 @@ const Register = () => {
 
       if (response.ok) {
         login(data.token, data.user);
-        navigate('/dashboard');
+        navigate('/home');
       } else {
         setError(data.error || 'Registration failed');
       }

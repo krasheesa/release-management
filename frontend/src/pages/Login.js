@@ -28,7 +28,7 @@ const Login = () => {
 
       if (response.ok) {
         login(data.token, data.user);
-        navigate('/dashboard');
+        navigate('/home');
       } else {
         setError(data.error || 'Login failed');
       }
@@ -73,10 +73,6 @@ const Login = () => {
       <p className="text-center" style={{ marginTop: '20px' }}>
         Don't have an account? <Link to="/register" className="link">Register here</Link>
       </p>
-      <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-        <h4>Demo Credentials:</h4>
-        <p><strong>Admin:</strong> admin@admin.test / admin123</p>
-      </div>
     </div>
   );
 };

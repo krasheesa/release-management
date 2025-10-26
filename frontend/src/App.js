@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
 
 // Simple auth context
 const AuthContext = React.createContext();
@@ -89,14 +89,15 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route 
-            path="/dashboard" 
+            path="/home" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Home />
               </ProtectedRoute>
             } 
           />
-          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/dashboard" element={<Navigate to="/home" />} />
+          <Route path="/" element={<Navigate to="/home" />} />
         </Routes>
       </Router>
     </AuthProvider>
