@@ -120,8 +120,9 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   const getStatusBadge = (status) => {
     const statusClasses = {
       'draft': 'status-draft',
-      'planned': 'status-planned',
+      'planned': 'status-planned', 
       'in_progress': 'status-in-progress',
+      'released': 'status-released',
       'deployed': 'status-deployed',
       'cancelled': 'status-cancelled'
     };
@@ -131,9 +132,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
         {status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
       </span>
     );
-  };
-
-  if (loading) {
+  };  if (loading) {
     return (
       <div className="release-manager">
         <div className="loading-spinner">Loading releases...</div>
@@ -249,20 +248,31 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
                   <h4>Associated Builds</h4>
                   {releaseBuilds[release.id] ? (
                     releaseBuilds[release.id].length > 0 ? (
-                      <div className="builds-list">
-                        {releaseBuilds[release.id].map(build => (
-                          <div key={build.id} className="build-item">
-                            <div className="build-info">
-                              <strong>{build.system?.name || 'Unknown System'}</strong>
-                              <span className="build-version">v{build.version}</span>
-                            </div>
-                            <div className="build-meta">
-                              <span className="build-date">
-                                {formatDate(build.build_date)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                      <div className="builds-table-container">
+                        <table className="builds-table">
+                          <thead>
+                            <tr>
+                              <th>Service Name</th>
+                              <th>Version</th>
+                              <th>Build Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {releaseBuilds[release.id].map(build => (
+                              <tr key={build.id} className="build-row">
+                                <td className="service-name-cell">
+                                  {build.system?.name || 'Unknown System'}
+                                </td>
+                                <td className="version-cell">
+                                  <span className="version-badge">v{build.version}</span>
+                                </td>
+                                <td className="date-cell">
+                                  {formatDate(build.build_date)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
                       <p className="no-builds">No builds associated with this release</p>

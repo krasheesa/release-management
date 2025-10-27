@@ -15,7 +15,8 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
     name: '',
     description: '',
     release_date: '',
-    status: 'draft'
+    status: 'draft',
+    release_type: 'minor'
   });
   const [releaseBuilds, setReleaseBuilds] = useState([]);
   const [availableBuilds, setAvailableBuilds] = useState([]);
@@ -154,6 +155,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
       'draft': 'status-draft',
       'planned': 'status-planned',
       'in_progress': 'status-in-progress',
+      'released': 'status-released',
       'deployed': 'status-deployed',
       'cancelled': 'status-cancelled'
     };
@@ -256,9 +258,24 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
               >
                 <option value="draft">Draft</option>
                 <option value="planned">Planned</option>
-                <option value="in_progress">In Progress</option>
+                <option value="in_progress">In progress</option>
+                <option value="released">Released</option>
                 <option value="deployed">Deployed</option>
                 <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="release_type">Release Type</label>
+              <select
+                id="release_type"
+                name="release_type"
+                value={release.release_type}
+                onChange={handleInputChange}
+              >
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+                <option value="hotfix">Hotfix</option>
               </select>
             </div>
           </div>
@@ -290,30 +307,41 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
             </div>
 
             {releaseBuilds.length > 0 ? (
-              <div className="builds-list">
-                {releaseBuilds.map(build => (
-                  <div key={build.id} className="build-card">
-                    <div className="build-info">
-                      <div className="build-header">
-                        <h4>{build.name}</h4>
-                        <span className="build-version">v{build.version}</span>
-                        {getStatusBadge(build.status)}
-                      </div>
-                      <p className="build-description">{build.description}</p>
-                      <div className="build-meta">
-                        <span>📅 Built: {formatDate(build.build_date)}</span>
-                        <span>🏗️ System: {build.system?.name || 'Unknown'}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveBuild(build.id)}
-                      className="remove-build-btn"
-                      title="Remove from release"
-                    >
-                      ✖️
-                    </button>
-                  </div>
-                ))}
+              <div className="builds-table-container">
+                <table className="builds-table">
+                  <thead>
+                    <tr>
+                      <th>Service Name</th>
+                      <th>Version</th>
+                      <th>Build Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {releaseBuilds.map(build => (
+                      <tr key={build.id} className="build-row">
+                        <td className="service-name-cell">
+                          {build.system?.name || 'Unknown System'}
+                        </td>
+                        <td className="version-cell">
+                          <span className="version-badge">v{build.version}</span>
+                        </td>
+                        <td className="date-cell">
+                          {formatDate(build.build_date)}
+                        </td>
+                        <td className="actions-cell">
+                          <button
+                            onClick={() => handleRemoveBuild(build.id)}
+                            className="remove-build-btn"
+                            title="Remove from release"
+                          >
+                            ✖️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="empty-builds">
@@ -347,28 +375,40 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
             </div>
             <div className="modal-body">
               {unassociatedBuilds.length > 0 ? (
-                <div className="available-builds">
-                  {unassociatedBuilds.map(build => (
-                    <div key={build.id} className="available-build-item">
-                      <div className="build-info">
-                        <div className="build-header">
-                          <h4>{build.name}</h4>
-                          <span className="build-version">v{build.version}</span>
-                          {getStatusBadge(build.status)}
-                        </div>
-                        <p className="build-description">{build.description}</p>
-                        <div className="build-meta">
-                          <span>📅 {formatDate(build.build_date)}</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleAddBuild(build.id)}
-                        className="add-btn"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
+                <div className="available-builds-table-container">
+                  <table className="available-builds-table">
+                    <thead>
+                      <tr>
+                        <th>Service Name</th>
+                        <th>Version</th>
+                        <th>Build Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unassociatedBuilds.map(build => (
+                        <tr key={build.id} className="available-build-row">
+                          <td className="service-name-cell">
+                            {build.system?.name || 'Unknown System'}
+                          </td>
+                          <td className="version-cell">
+                            <span className="version-badge">v{build.version}</span>
+                          </td>
+                          <td className="date-cell">
+                            {formatDate(build.build_date)}
+                          </td>
+                          <td className="actions-cell">
+                            <button
+                              onClick={() => handleAddBuild(build.id)}
+                              className="add-btn"
+                            >
+                              Add
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <p className="no-available-builds">

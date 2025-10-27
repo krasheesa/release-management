@@ -13,25 +13,27 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('build_date');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [filterSystem, setFilterSystem] = useState('');
-  const [filterRelease, setFilterRelease] = useState('');
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({
-    release: '',
+  const [columnFilters, setColumnFilters] = useState({
     system: '',
-    subsystem: ''
+    release: ''
   });
+  const [activeFilterColumn, setActiveFilterColumn] = useState(null);
+  const [filterSearchTerms, setFilterSearchTerms] = useState({
+    system: '',
+    release: ''
+  });
+
 
   // Load data on component mount
   useEffect(() => {
     loadData();
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showFilterDropdown && !event.target.closest('.filter-dropdown-container')) {
-        setShowFilterDropdown(false);
+      if (activeFilterColumn && !event.target.closest('.column-header')) {
+        setActiveFilterColumn(null);
       }
     };
 
@@ -39,7 +41,9 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showFilterDropdown]);
+  }, [activeFilterColumn]);
+
+
 
   const loadData = async () => {
     try {
@@ -120,53 +124,7 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
     });
   };
 
-  const getSubsystems = () => {
-    return systems.filter(system => system.parent_id);
-  };
 
-  const getParentSystems = () => {
-    return systems.filter(system => !system.parent_id);
-  };
-
-  const handleFilterChange = (type, value) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      [type]: value
-    }));
-    
-    // Clear other filters when one is selected
-    if (value) {
-      const newFilters = { release: '', system: '', subsystem: '' };
-      newFilters[type] = value;
-      setActiveFilters(newFilters);
-    }
-    
-    setShowFilterDropdown(false);
-  };
-
-  const clearAllFilters = () => {
-    setActiveFilters({
-      release: '',
-      system: '',
-      subsystem: ''
-    });
-  };
-
-  const getActiveFilterLabel = () => {
-    if (activeFilters.release) {
-      const release = releases.find(r => r.id === activeFilters.release);
-      return `Release: ${release?.name || 'Unknown'}`;
-    }
-    if (activeFilters.system) {
-      const system = systems.find(s => s.id === activeFilters.system);
-      return `System: ${system?.name || 'Unknown'}`;
-    }
-    if (activeFilters.subsystem) {
-      const subsystem = systems.find(s => s.id === activeFilters.subsystem);
-      return `Subsystem: ${subsystem?.name || 'Unknown'}`;
-    }
-    return 'Filter';
-  };
 
   // Filter and sort builds
   const filteredAndSortedBuilds = builds
@@ -176,17 +134,11 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
         build.version.toLowerCase().includes(searchTerm.toLowerCase()) ||
         getReleaseName(build.release_id).toLowerCase().includes(searchTerm.toLowerCase());
       
-      // New unified filter logic
-      let matchesFilter = true;
-      if (activeFilters.release) {
-        matchesFilter = build.release_id === activeFilters.release;
-      } else if (activeFilters.system) {
-        matchesFilter = build.system_id === activeFilters.system;
-      } else if (activeFilters.subsystem) {
-        matchesFilter = build.system_id === activeFilters.subsystem;
-      }
+      // Column-based filter logic
+      const matchesSystemFilter = !columnFilters.system || build.system_id === columnFilters.system;
+      const matchesReleaseFilter = !columnFilters.release || build.release_id === columnFilters.release;
       
-      return matchesSearch && matchesFilter;
+      return matchesSearch && matchesSystemFilter && matchesReleaseFilter;
     })
     .sort((a, b) => {
       let aValue, bValue;
@@ -227,6 +179,55 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
     return sortOrder === 'asc' ? '↑' : '↓';
   };
 
+  const handleColumnFilter = (column, value) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [column]: value
+    }));
+    setActiveFilterColumn(null);
+  };
+
+  const handleFilterSearch = (column, value) => {
+    setFilterSearchTerms(prev => ({
+      ...prev,
+      [column]: value
+    }));
+  };
+
+  const getFilteredOptions = (column) => {
+    const searchTerm = filterSearchTerms[column].toLowerCase();
+    
+    if (column === 'system') {
+      // Only show systems that exist in current builds
+      const existingSystemIds = [...new Set(builds.map(build => build.system_id))];
+      return systems
+        .filter(system => existingSystemIds.includes(system.id))
+        .filter(system => system.name.toLowerCase().includes(searchTerm));
+    } else if (column === 'release') {
+      // Only show releases that exist in current builds
+      const existingReleaseIds = [...new Set(builds.map(build => build.release_id).filter(Boolean))];
+      return releases
+        .filter(release => existingReleaseIds.includes(release.id))
+        .filter(release => release.name.toLowerCase().includes(searchTerm));
+    }
+    return [];
+  };
+
+  const clearColumnFilter = (column) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [column]: ''
+    }));
+    setFilterSearchTerms(prev => ({
+      ...prev,
+      [column]: ''
+    }));
+  };
+
+  const hasActiveFilter = (column) => {
+    return columnFilters[column] !== '';
+  };
+
   if (loading) {
     return <div className="loading">Loading builds...</div>;
   }
@@ -260,106 +261,7 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
           />
         </div>
         
-        <div className="filters">
-          <div className="filter-dropdown-container">
-            <button
-              className={`filter-button ${Object.values(activeFilters).some(v => v) ? 'active' : ''}`}
-              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            >
-              {getActiveFilterLabel()} ▼
-            </button>
-            
-            {showFilterDropdown && (
-              <div className="filter-dropdown">
-                <div className="filter-section">
-                  <div className="filter-section-header">
-                    <span>By Release</span>
-                    {activeFilters.release && (
-                      <button
-                        className="clear-filter-btn"
-                        onClick={() => handleFilterChange('release', '')}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <div className="filter-options">
-                    {releases.map(release => (
-                      <button
-                        key={release.id}
-                        className={`filter-option ${activeFilters.release === release.id ? 'selected' : ''}`}
-                        onClick={() => handleFilterChange('release', release.id)}
-                      >
-                        {release.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="filter-section">
-                  <div className="filter-section-header">
-                    <span>By System</span>
-                    {activeFilters.system && (
-                      <button
-                        className="clear-filter-btn"
-                        onClick={() => handleFilterChange('system', '')}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <div className="filter-options">
-                    {getParentSystems().map(system => (
-                      <button
-                        key={system.id}
-                        className={`filter-option ${activeFilters.system === system.id ? 'selected' : ''}`}
-                        onClick={() => handleFilterChange('system', system.id)}
-                      >
-                        {system.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="filter-section">
-                  <div className="filter-section-header">
-                    <span>By Subsystem</span>
-                    {activeFilters.subsystem && (
-                      <button
-                        className="clear-filter-btn"
-                        onClick={() => handleFilterChange('subsystem', '')}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <div className="filter-options">
-                    {getSubsystems().map(subsystem => (
-                      <button
-                        key={subsystem.id}
-                        className={`filter-option ${activeFilters.subsystem === subsystem.id ? 'selected' : ''}`}
-                        onClick={() => handleFilterChange('subsystem', subsystem.id)}
-                      >
-                        {subsystem.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                {Object.values(activeFilters).some(v => v) && (
-                  <div className="filter-actions">
-                    <button
-                      className="clear-all-filters-btn"
-                      onClick={clearAllFilters}
-                    >
-                      Clear All Filters
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+
       </div>
 
       <div className="build-table-container">
@@ -374,11 +276,57 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
           <table className="build-table">
             <thead>
               <tr>
-                <th 
-                  onClick={() => handleSort('system')}
-                  className="sortable"
-                >
-                  System {getSortIcon('system')}
+                <th className="column-header">
+                  <div className="header-content">
+                    <span 
+                      onClick={() => handleSort('system')}
+                      className="sortable"
+                    >
+                      System {getSortIcon('system')}
+                    </span>
+                    <button
+                      className={`filter-btn ${hasActiveFilter('system') ? 'active' : ''}`}
+                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'system' ? null : 'system')}
+                    >
+                      🔍
+                    </button>
+                  </div>
+                  {activeFilterColumn === 'system' && (
+                    <div className="column-filter-dropdown">
+                      {hasActiveFilter('system') && (
+                        <button
+                          className="clear-filter-btn top"
+                          onClick={() => clearColumnFilter('system')}
+                        >
+                          ✕ Clear Filter
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search systems..."
+                        value={filterSearchTerms.system}
+                        onChange={(e) => handleFilterSearch('system', e.target.value)}
+                        className="filter-search-input"
+                      />
+                      <div className="filter-options">
+                        {getFilteredOptions('system').length > 0 ? (
+                          getFilteredOptions('system').map(system => (
+                            <button
+                              key={system.id}
+                              className={`filter-option ${columnFilters.system === system.id ? 'selected' : ''}`}
+                              onClick={() => handleColumnFilter('system', system.id)}
+                            >
+                              {system.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="no-options">
+                            {filterSearchTerms.system ? 'No systems found' : 'No systems available'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </th>
                 <th 
                   onClick={() => handleSort('version')}
@@ -386,11 +334,57 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
                 >
                   Version {getSortIcon('version')}
                 </th>
-                <th 
-                  onClick={() => handleSort('release')}
-                  className="sortable"
-                >
-                  Release {getSortIcon('release')}
+                <th className="column-header">
+                  <div className="header-content">
+                    <span 
+                      onClick={() => handleSort('release')}
+                      className="sortable"
+                    >
+                      Release {getSortIcon('release')}
+                    </span>
+                    <button
+                      className={`filter-btn ${hasActiveFilter('release') ? 'active' : ''}`}
+                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'release' ? null : 'release')}
+                    >
+                      🔍
+                    </button>
+                  </div>
+                  {activeFilterColumn === 'release' && (
+                    <div className="column-filter-dropdown">
+                      {hasActiveFilter('release') && (
+                        <button
+                          className="clear-filter-btn top"
+                          onClick={() => clearColumnFilter('release')}
+                        >
+                          ✕ Clear Filter
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search releases..."
+                        value={filterSearchTerms.release}
+                        onChange={(e) => handleFilterSearch('release', e.target.value)}
+                        className="filter-search-input"
+                      />
+                      <div className="filter-options">
+                        {getFilteredOptions('release').length > 0 ? (
+                          getFilteredOptions('release').map(release => (
+                            <button
+                              key={release.id}
+                              className={`filter-option ${columnFilters.release === release.id ? 'selected' : ''}`}
+                              onClick={() => handleColumnFilter('release', release.id)}
+                            >
+                              {release.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="no-options">
+                            {filterSearchTerms.release ? 'No releases found' : 'No releases available'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </th>
                 <th 
                   onClick={() => handleSort('build_date')}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { systemService, buildService } from '../services/api';
+import { systemService, buildService, releaseService } from '../services/api';
 import './SystemDetail.css';
 
 const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsystem }) => {
@@ -11,6 +11,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
   const [system, setSystem] = useState(null);
   const [subsystems, setSubsystems] = useState([]);
   const [systemBuilds, setSystemBuilds] = useState([]);
+  const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +19,9 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
   const [sortOrder, setSortOrder] = useState('asc');
   const [expandedSubsystems, setExpandedSubsystems] = useState({});
   const [subsystemBuilds, setSubsystemBuilds] = useState({});
+  const [buildSearchTerm, setBuildSearchTerm] = useState('');
+  const [buildSortBy, setBuildSortBy] = useState('build_date');
+  const [buildSortOrder, setBuildSortOrder] = useState('desc');
 
   useEffect(() => {
     if (currentSystemId && currentSystemId !== 'new') {
@@ -29,17 +33,26 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
     try {
       setLoading(true);
       
-      // Load system details
-      const systemData = await systemService.getSystem(currentSystemId);
+      // Load all data in parallel
+      const [systemData, subsystemsData, allBuilds, releasesData] = await Promise.all([
+        systemService.getSystem(currentSystemId),
+        systemService.getSubsystems(currentSystemId),
+        buildService.getAllBuilds(),
+        releaseService.getAllReleases()
+      ]);
+      
       setSystem(systemData);
-      
-      // Load subsystems
-      const subsystemsData = await systemService.getSubsystems(currentSystemId);
       setSubsystems(subsystemsData);
+      setReleases(releasesData);
       
-      // Load system builds
-      const allBuilds = await buildService.getAllBuilds();
-      const systemSpecificBuilds = allBuilds.filter(build => build.system_id === currentSystemId);
+      // Filter builds for this system and enrich with release data
+      const systemSpecificBuilds = allBuilds
+        .filter(build => build.system_id === currentSystemId)
+        .map(build => ({
+          ...build,
+          release: releasesData.find(release => release.id === build.release_id)
+        }));
+      
       setSystemBuilds(systemSpecificBuilds);
       
       setError(null);
@@ -145,6 +158,67 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
     return new Date(dateString).toLocaleDateString();
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleBuildSort = (field) => {
+    if (buildSortBy === field) {
+      setBuildSortOrder(buildSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setBuildSortBy(field);
+      setBuildSortOrder('asc');
+    }
+  };
+
+  const getBuildSortIcon = (field) => {
+    if (buildSortBy !== field) return '⇅';
+    return buildSortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  // Filter and sort builds
+  const filteredAndSortedBuilds = systemBuilds
+    .filter(build => 
+      build.version.toLowerCase().includes(buildSearchTerm.toLowerCase()) ||
+      (build.release?.name || '').toLowerCase().includes(buildSearchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (buildSortBy) {
+        case 'version':
+          aValue = a.version;
+          bValue = b.version;
+          break;
+        case 'release':
+          aValue = a.release?.name || '';
+          bValue = b.release?.name || '';
+          break;
+        case 'build_date':
+          aValue = new Date(a.build_date);
+          bValue = new Date(b.build_date);
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at);
+          bValue = new Date(b.created_at);
+          break;
+        default:
+          aValue = a[buildSortBy] || '';
+          bValue = b[buildSortBy] || '';
+      }
+      
+      if (aValue < bValue) return buildSortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return buildSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
   if (loading) {
     return (
       <div className="system-detail">
@@ -227,27 +301,82 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
 
       {/* System Builds Section */}
       <div className="builds-section">
-        <h2>Associated Builds ({systemBuilds.length})</h2>
-        {systemBuilds.length > 0 ? (
-          <div className="builds-grid">
-            {systemBuilds.map(build => (
-              <div key={build.id} className="build-card">
-                <div className="build-header">
-                  <h3>{build.system?.name || 'Unknown System'}</h3>
-                  <span className="build-version">v{build.version}</span>
-                </div>
-                <div className="build-info">
-                  <div className="build-meta">
-                    <span className="build-date">
-                      📅 {formatDate(build.build_date)}
-                    </span>
-                    <span className="build-release">
-                      📦 {build.release?.name || 'No Release'}
-                    </span>
-                  </div>
-                </div>
+        <div className="builds-header">
+          <h2>Associated Builds ({systemBuilds.length})</h2>
+          
+          {systemBuilds.length > 0 && (
+            <div className="builds-controls">
+              <div className="build-search-box">
+                <input
+                  type="text"
+                  placeholder="Search by version or release..."
+                  value={buildSearchTerm}
+                  onChange={(e) => setBuildSearchTerm(e.target.value)}
+                  className="build-search-input"
+                />
               </div>
-            ))}
+            </div>
+          )}
+        </div>
+
+        {systemBuilds.length > 0 ? (
+          <div className="builds-table-container">
+            {filteredAndSortedBuilds.length === 0 ? (
+              <div className="no-builds-found">
+                <p>No builds match your search criteria</p>
+              </div>
+            ) : (
+              <table className="builds-table">
+                <thead>
+                  <tr>
+                    <th 
+                      onClick={() => handleBuildSort('version')}
+                      className="sortable"
+                    >
+                      Version {getBuildSortIcon('version')}
+                    </th>
+                    <th 
+                      onClick={() => handleBuildSort('release')}
+                      className="sortable"
+                    >
+                      Release {getBuildSortIcon('release')}
+                    </th>
+                    <th 
+                      onClick={() => handleBuildSort('build_date')}
+                      className="sortable"
+                    >
+                      Build Date {getBuildSortIcon('build_date')}
+                    </th>
+                    <th 
+                      onClick={() => handleBuildSort('created_at')}
+                      className="sortable"
+                    >
+                      Created Date {getBuildSortIcon('created_at')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedBuilds.map(build => (
+                    <tr key={build.id} className="build-row">
+                      <td className="version-cell">
+                        <span className="version-badge">v{build.version}</span>
+                      </td>
+                      <td className="release-cell">
+                        {build.release?.name || (
+                          <span className="no-release">No Release</span>
+                        )}
+                      </td>
+                      <td className="date-cell">
+                        {formatDateTime(build.build_date)}
+                      </td>
+                      <td className="date-cell">
+                        {formatDateTime(build.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         ) : (
           <div className="empty-builds">

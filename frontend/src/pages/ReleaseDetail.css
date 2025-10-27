@@ -287,6 +287,12 @@
   border: 1px solid #ffcc02;
 }
 
+.status-released {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
 .status-deployed {
   background: #e8f5e8;
   color: #2e7d32;
@@ -443,6 +449,127 @@
 
 .retry-btn:hover {
   background: #c82333;
+}
+
+/* Builds Table Styles */
+.builds-table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 15px;
+}
+
+.builds-table,
+.available-builds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.builds-table thead,
+.available-builds-table thead {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.builds-table th,
+.available-builds-table th {
+  padding: 15px 20px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.builds-table td,
+.available-builds-table td {
+  padding: 15px 20px;
+  border-bottom: 1px solid #dee2e6;
+  vertical-align: middle;
+}
+
+.build-row:hover,
+.available-build-row:hover {
+  background-color: #f8f9fa;
+}
+
+.build-row:last-child td,
+.available-build-row:last-child td {
+  border-bottom: none;
+}
+
+.service-name-cell {
+  font-weight: 500;
+  color: #495057;
+}
+
+.version-cell {
+  font-weight: 500;
+}
+
+.version-badge {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+}
+
+.date-cell {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.remove-build-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.remove-build-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.add-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.add-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.available-builds-table-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  margin-top: 15px;
 }
 
 /* Responsive Design */
