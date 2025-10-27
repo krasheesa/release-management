@@ -226,9 +226,9 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
                       handleReleaseClick(release.id);
                     }}
                     className="edit-btn"
-                    title="Edit Release"
+                    title="View Release"
                   >
-                    ✏️
+                    👁️
                   </button>
                   <button
                     onClick={(e) => handleDeleteRelease(release.id, e)}

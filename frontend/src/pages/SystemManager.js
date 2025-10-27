@@ -239,20 +239,6 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                     👁️
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (embedded && onNavigateToDetail) {
-                        onNavigateToDetail(system.id + '/edit');
-                      } else {
-                        navigate(`/systems/${system.id}/edit`);
-                      }
-                    }}
-                    className="edit-btn"
-                    title="Edit System"
-                  >
-                    ✏️
-                  </button>
-                  <button
                     onClick={(e) => handleDeleteSystem(system.id, e)}
                     className="delete-btn"
                     title="Delete System"

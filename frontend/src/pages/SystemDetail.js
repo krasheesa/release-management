@@ -271,7 +271,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
           }}
           className="edit-system-btn"
         >
-          ✏️ Edit System
+          Edit System
         </button>
       </div>
 
