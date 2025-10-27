@@ -18,7 +18,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
     description: '',
     release_date: '',
     status: 'draft',
-    release_type: 'minor'
+    type: 'Minor'
   });
   const [releaseBuilds, setReleaseBuilds] = useState([]);
   const [availableBuilds, setAvailableBuilds] = useState([]);
@@ -288,16 +288,16 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="release_type">Release Type</label>
+              <label htmlFor="type">Release Type</label>
               <select
-                id="release_type"
-                name="release_type"
-                value={release.release_type}
+                id="type"
+                name="type"
+                value={release.type}
                 onChange={handleInputChange}
               >
-                <option value="major">Major</option>
-                <option value="minor">Minor</option>
-                <option value="hotfix">Hotfix</option>
+                <option value="Major">Major</option>
+                <option value="Minor">Minor</option>
+                <option value="Hotfix">Hotfix</option>
               </select>
             </div>
           </div>
