@@ -28,7 +28,8 @@ const Login = () => {
 
       if (response.ok) {
         login(data.token, data.user);
-        navigate('/home');
+        const lastPath = localStorage.getItem('lastVisitedPath');
+        navigate(lastPath || '/home');
       } else {
         setError(data.error || 'Login failed');
       }

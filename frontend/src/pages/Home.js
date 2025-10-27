@@ -1,21 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../App';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import ReleaseManager from './ReleaseManager';
 import ReleaseDetail from './ReleaseDetail';
 import SystemManager from './SystemManager';
 import SystemDetail from './SystemDetail';
 import SystemForm from './SystemForm';
 
-const Home = () => {
-  const { user, logout } = useAuth();
+const Home = ({ activeContent: propActiveContent }) => {
+  const { user, logout, justLoggedIn, setJustLoggedIn } = useAuth();
+  const navigate = useNavigate();
+  const params = useParams();
+  const location = useLocation();
+  
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [leftPanelExpanded, setLeftPanelExpanded] = useState(true);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
-  const [activeContent, setActiveContent] = useState('welcome');
-  const [selectedReleaseId, setSelectedReleaseId] = useState(null);
-  const [selectedSystemId, setSelectedSystemId] = useState(null);
+  const [activeContent, setActiveContent] = useState(propActiveContent || 'welcome');
+  const [selectedReleaseId, setSelectedReleaseId] = useState(params.id || null);
+  const [selectedSystemId, setSelectedSystemId] = useState(params.id || null);
   const [parentSystemId, setParentSystemId] = useState(null);
+
+  // Handle welcome modal logic
+  useEffect(() => {
+    const welcomeShown = localStorage.getItem('welcomeShown');
+    if (justLoggedIn && !welcomeShown) {
+      setShowWelcomeModal(true);
+      setJustLoggedIn(false);
+    }
+  }, [justLoggedIn, setJustLoggedIn]);
+
+  // Update active content based on route
+  useEffect(() => {
+    if (propActiveContent) {
+      setActiveContent(propActiveContent);
+      
+      // Auto-expand relevant menu based on active content
+      if (propActiveContent.includes('release') || propActiveContent.includes('system')) {
+        setExpandedMenus(prev => ({
+          ...prev,
+          'release': true
+        }));
+      } else if (propActiveContent.includes('environment')) {
+        setExpandedMenus(prev => ({
+          ...prev,
+          'environment': true
+        }));
+      } else if (propActiveContent.includes('request')) {
+        setExpandedMenus(prev => ({
+          ...prev,
+          'request': true
+        }));
+      } else if (propActiveContent.includes('deployment')) {
+        setExpandedMenus(prev => ({
+          ...prev,
+          'deployment': true
+        }));
+      }
+    }
+    if (params.id) {
+      if (propActiveContent === 'release-detail') {
+        setSelectedReleaseId(params.id);
+      } else if (propActiveContent === 'system-detail' || propActiveContent === 'system-form') {
+        setSelectedSystemId(params.id);
+      }
+    }
+  }, [propActiveContent, params.id]);
 
   const toggleLeftPanel = () => {
     setLeftPanelExpanded(!leftPanelExpanded);
@@ -33,58 +84,54 @@ const Home = () => {
   };
 
   const handleMenuItemClick = (itemKey) => {
-    setActiveContent(itemKey);
-    setSelectedReleaseId(null); // Reset release selection when switching menus
-    setSelectedSystemId(null); // Reset system selection when switching menus
-    setParentSystemId(null); // Reset parent system selection when switching menus
+    const routeMap = {
+      'release-manager': '/release-manager',
+      'system-manager': '/systems',
+      'environment-manager': '/environment-manager',
+      'booking-request': '/booking-request',
+      'change-request': '/change-request',
+      'deployment-manager': '/deployment-manager'
+    };
+    
+    if (routeMap[itemKey]) {
+      navigate(routeMap[itemKey]);
+    } else {
+      setActiveContent(itemKey);
+    }
   };
 
   const handleReleaseNavigation = (releaseId) => {
-    setActiveContent('release-detail');
-    setSelectedReleaseId(releaseId);
+    navigate(`/releases/${releaseId}`);
   };
 
   const handleBackToReleaseManager = () => {
-    setActiveContent('release-manager');
-    setSelectedReleaseId(null);
+    navigate('/release-manager');
   };
 
   const handleSystemNavigation = (systemId) => {
     if (systemId === 'new') {
-      setActiveContent('system-form');
-      setSelectedSystemId('new');
-      setParentSystemId(null);
+      navigate('/systems/new');
     } else if (systemId && systemId.includes('/edit')) {
-      setActiveContent('system-form');
-      setSelectedSystemId(systemId.replace('/edit', ''));
-      setParentSystemId(null);
+      const id = systemId.replace('/edit', '');
+      navigate(`/systems/${id}/edit`);
     } else {
-      setActiveContent('system-detail');
-      setSelectedSystemId(systemId);
-      setParentSystemId(null);
+      navigate(`/systems/${systemId}`);
     }
   };
 
   const handleSubsystemNavigation = (subsystemId, parentId = null) => {
     if (subsystemId === 'new') {
-      setActiveContent('system-form');  
-      setSelectedSystemId('new');
-      setParentSystemId(parentId);
+      navigate('/systems/new', { state: { parentSystemId: parentId } });
     } else if (subsystemId && subsystemId.includes('/edit')) {
-      setActiveContent('system-form');
-      setSelectedSystemId(subsystemId.replace('/edit', ''));
-      setParentSystemId(null);
+      const id = subsystemId.replace('/edit', '');
+      navigate(`/systems/${id}/edit`);
     } else {
-      setActiveContent('system-detail');
-      setSelectedSystemId(subsystemId);
-      setParentSystemId(null);
+      navigate(`/systems/${subsystemId}`);
     }
   };
 
   const handleBackToSystemManager = () => {
-    setActiveContent('system-manager');
-    setSelectedSystemId(null);
-    setParentSystemId(null);
+    navigate('/systems');
   };
 
   const menuItems = [
@@ -238,7 +285,10 @@ const Home = () => {
             <p>Welcome to Release Management App!</p>
             <button 
               className="modal-close-btn"
-              onClick={() => setShowWelcomeModal(false)}
+              onClick={() => {
+                setShowWelcomeModal(false);
+                localStorage.setItem('welcomeShown', 'true');
+              }}
             >
               Get Started
             </button>
@@ -302,7 +352,7 @@ const Home = () => {
                     {menu.items.map((item) => (
                       <button
                         key={item.key}
-                        className="nav-subitem"
+                        className={`nav-subitem ${activeContent === item.key ? 'active' : ''}`}
                         onClick={() => handleMenuItemClick(item.key)}
                       >
                         {item.title}

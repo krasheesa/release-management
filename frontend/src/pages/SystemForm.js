@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { systemService } from '../services/api';
 import './SystemForm.css';
 
 const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const parentId = parentSystemId || searchParams.get('parent');
+  const parentId = parentSystemId || location.state?.parentSystemId || searchParams.get('parent');
   const currentSystemId = systemId || id;
   
   const [formData, setFormData] = useState({
