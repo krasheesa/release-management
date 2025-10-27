@@ -46,17 +46,20 @@ func (h *BuildHandler) CreateBuild(c *gin.Context) {
 		return
 	}
 
-	// Validate that System and Release exist
+	// Validate that System exists
 	var system models.System
 	if err := database.DB.First(&system, "id = ?", build.SystemID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "System not found"})
 		return
 	}
 
-	var release models.Release
-	if err := database.DB.First(&release, "id = ?", build.ReleaseID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
-		return
+	// Only validate Release if ReleaseID is provided
+	if build.ReleaseID != nil && *build.ReleaseID != "" {
+		var release models.Release
+		if err := database.DB.First(&release, "id = ?", *build.ReleaseID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
+			return
+		}
 	}
 
 	if err := database.DB.Create(&build).Error; err != nil {
@@ -95,11 +98,14 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 		}
 	}
 
-	if updates.ReleaseID != "" && updates.ReleaseID != build.ReleaseID {
-		var release models.Release
-		if err := database.DB.First(&release, "id = ?", updates.ReleaseID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
-			return
+	if updates.ReleaseID != nil && *updates.ReleaseID != "" {
+		// Check if ReleaseID is actually changing
+		if build.ReleaseID == nil || *updates.ReleaseID != *build.ReleaseID {
+			var release models.Release
+			if err := database.DB.First(&release, "id = ?", *updates.ReleaseID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
+				return
+			}
 		}
 	}
 
