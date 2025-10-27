@@ -3,6 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
+import ReleaseManager from './pages/ReleaseManager';
+import ReleaseDetail from './pages/ReleaseDetail';
+import SystemManager from './pages/SystemManager';
+import SystemDetail from './pages/SystemDetail';
+import SystemForm from './pages/SystemForm';
 
 // Simple auth context
 const AuthContext = React.createContext();
@@ -93,6 +98,54 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/release-manager" 
+            element={
+              <ProtectedRoute>
+                <ReleaseManager />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/releases/:id" 
+            element={
+              <ProtectedRoute>
+                <ReleaseDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/systems" 
+            element={
+              <ProtectedRoute>
+                <SystemManager />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/systems/new" 
+            element={
+              <ProtectedRoute>
+                <SystemForm />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/systems/:id" 
+            element={
+              <ProtectedRoute>
+                <SystemDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/systems/:id/edit" 
+            element={
+              <ProtectedRoute>
+                <SystemForm />
               </ProtectedRoute>
             } 
           />

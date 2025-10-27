@@ -31,7 +31,13 @@ func Connect(cfg *config.Config) error {
 	}
 
 	// Auto migrate the schema
-	if err := DB.AutoMigrate(&models.User{}); err != nil {
+	if err := DB.AutoMigrate(
+		&models.User{},
+		&models.Release{},
+		&models.System{},
+		&models.Build{},
+		&models.Environment{},
+	); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 

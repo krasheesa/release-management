@@ -16,6 +16,10 @@ func Setup(cfg *config.Config) *gin.Engine {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(cfg)
+	releaseHandler := handlers.NewReleaseHandler()
+	systemHandler := handlers.NewSystemHandler()
+	buildHandler := handlers.NewBuildHandler()
+	environmentHandler := handlers.NewEnvironmentHandler()
 
 	// Public routes
 	auth := r.Group("/api/auth")
@@ -35,6 +39,48 @@ func Setup(cfg *config.Config) *gin.Engine {
 				"userID":  c.GetUint("userID"),
 			})
 		})
+
+		// Release endpoints
+		releases := protected.Group("/releases")
+		{
+			releases.GET("", releaseHandler.GetReleases)
+			releases.GET("/:id", releaseHandler.GetRelease)
+			releases.POST("", releaseHandler.CreateRelease)
+			releases.PUT("/:id", releaseHandler.UpdateRelease)
+			releases.DELETE("/:id", releaseHandler.DeleteRelease)
+			releases.GET("/:id/builds", releaseHandler.GetReleaseBuilds)
+		}
+
+		// System endpoints
+		systems := protected.Group("/systems")
+		{
+			systems.GET("", systemHandler.GetSystems)
+			systems.GET("/:id", systemHandler.GetSystem)
+			systems.POST("", systemHandler.CreateSystem)
+			systems.PUT("/:id", systemHandler.UpdateSystem)
+			systems.DELETE("/:id", systemHandler.DeleteSystem)
+			systems.GET("/:id/subsystems", systemHandler.GetSubsystems)
+		}
+
+		// Build endpoints
+		builds := protected.Group("/builds")
+		{
+			builds.GET("", buildHandler.GetBuilds)
+			builds.GET("/:id", buildHandler.GetBuild)
+			builds.POST("", buildHandler.CreateBuild)
+			builds.PUT("/:id", buildHandler.UpdateBuild)
+			builds.DELETE("/:id", buildHandler.DeleteBuild)
+		}
+
+		// Environment endpoints
+		environments := protected.Group("/environments")
+		{
+			environments.GET("", environmentHandler.GetEnvironments)
+			environments.GET("/:id", environmentHandler.GetEnvironment)
+			environments.POST("", environmentHandler.CreateEnvironment)
+			environments.PUT("/:id", environmentHandler.UpdateEnvironment)
+			environments.DELETE("/:id", environmentHandler.DeleteEnvironment)
+		}
 	}
 
 	// Health check

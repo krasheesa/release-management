@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
+import ReleaseManager from './ReleaseManager';
+import ReleaseDetail from './ReleaseDetail';
+import SystemManager from './SystemManager';
+import SystemDetail from './SystemDetail';
+import SystemForm from './SystemForm';
 
 const Home = () => {
   const { user, logout } = useAuth();
@@ -8,6 +13,9 @@ const Home = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState({});
   const [activeContent, setActiveContent] = useState('welcome');
+  const [selectedReleaseId, setSelectedReleaseId] = useState(null);
+  const [selectedSystemId, setSelectedSystemId] = useState(null);
+  const [parentSystemId, setParentSystemId] = useState(null);
 
   const toggleLeftPanel = () => {
     setLeftPanelExpanded(!leftPanelExpanded);
@@ -24,13 +32,69 @@ const Home = () => {
     logout();
   };
 
+  const handleMenuItemClick = (itemKey) => {
+    setActiveContent(itemKey);
+    setSelectedReleaseId(null); // Reset release selection when switching menus
+    setSelectedSystemId(null); // Reset system selection when switching menus
+    setParentSystemId(null); // Reset parent system selection when switching menus
+  };
+
+  const handleReleaseNavigation = (releaseId) => {
+    setActiveContent('release-detail');
+    setSelectedReleaseId(releaseId);
+  };
+
+  const handleBackToReleaseManager = () => {
+    setActiveContent('release-manager');
+    setSelectedReleaseId(null);
+  };
+
+  const handleSystemNavigation = (systemId) => {
+    if (systemId === 'new') {
+      setActiveContent('system-form');
+      setSelectedSystemId('new');
+      setParentSystemId(null);
+    } else if (systemId && systemId.includes('/edit')) {
+      setActiveContent('system-form');
+      setSelectedSystemId(systemId.replace('/edit', ''));
+      setParentSystemId(null);
+    } else {
+      setActiveContent('system-detail');
+      setSelectedSystemId(systemId);
+      setParentSystemId(null);
+    }
+  };
+
+  const handleSubsystemNavigation = (subsystemId, parentId = null) => {
+    if (subsystemId === 'new') {
+      setActiveContent('system-form');  
+      setSelectedSystemId('new');
+      setParentSystemId(parentId);
+    } else if (subsystemId && subsystemId.includes('/edit')) {
+      setActiveContent('system-form');
+      setSelectedSystemId(subsystemId.replace('/edit', ''));
+      setParentSystemId(null);
+    } else {
+      setActiveContent('system-detail');
+      setSelectedSystemId(subsystemId);
+      setParentSystemId(null);
+    }
+  };
+
+  const handleBackToSystemManager = () => {
+    setActiveContent('system-manager');
+    setSelectedSystemId(null);
+    setParentSystemId(null);
+  };
+
   const menuItems = [
     {
       key: 'release',
       title: 'Release',
       icon: '📋',
       items: [
-        { key: 'release-manager', title: 'Manager' }
+        { key: 'release-manager', title: 'Manager' },
+        { key: 'system-manager', title: 'Systems' }
       ]
     },
     {
@@ -61,44 +125,107 @@ const Home = () => {
   ];
 
   const renderContent = () => {
-    const contentMap = {
-      'welcome': {
-        title: 'Welcome to Release Management!',
-        description: 'Select a menu item from the left panel to get started.'
-      },
-      'release-manager': {
-        title: 'Release Manager',
-        description: 'Manage your software releases here.'
-      },
-      'environment-manager': {
-        title: 'Environment Manager',
-        description: 'Manage your deployment environments here.'
-      },
-      'booking-request': {
-        title: 'Booking Request',
-        description: 'Create and manage booking requests here.'
-      },
-      'change-request': {
-        title: 'Change Request',
-        description: 'Create and manage change requests here.'
-      },
-      'deployment-manager': {
-        title: 'Deployment Manager',
-        description: 'Manage your deployments here.'
-      }
-    };
-
-    const content = contentMap[activeContent] || contentMap['welcome'];
-
-    return (
-      <div className="content-placeholder">
-        <h2>{content.title}</h2>
-        <p>{content.description}</p>
-        <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
-          Content will be implemented here...
-        </div>
-      </div>
-    );
+    switch (activeContent) {
+      case 'release-manager':
+        return (
+          <ReleaseManager 
+            embedded={true} 
+            onNavigateToDetail={handleReleaseNavigation}
+          />
+        );
+      
+      case 'release-detail':
+        return (
+          <ReleaseDetail 
+            releaseId={selectedReleaseId}
+            embedded={true}
+            onBack={handleBackToReleaseManager}
+          />
+        );
+      
+      case 'system-manager':
+        return (
+          <SystemManager 
+            embedded={true} 
+            onNavigateToDetail={handleSystemNavigation}
+          />
+        );
+      
+      case 'system-detail':
+        return (
+          <SystemDetail 
+            systemId={selectedSystemId}
+            embedded={true}
+            onBack={handleBackToSystemManager}
+            onNavigateToSubsystem={handleSubsystemNavigation}
+          />
+        );
+      
+      case 'system-form':
+        return (
+          <SystemForm 
+            systemId={selectedSystemId}
+            parentSystemId={parentSystemId}
+            embedded={true}
+            onBack={handleBackToSystemManager}
+          />
+        );
+      
+      case 'environment-manager':
+        return (
+          <div className="content-placeholder">
+            <h2>Environment Manager</h2>
+            <p>Manage your deployment environments here.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Content will be implemented here...
+            </div>
+          </div>
+        );
+      
+      case 'booking-request':
+        return (
+          <div className="content-placeholder">
+            <h2>Booking Request</h2>
+            <p>Create and manage booking requests here.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Content will be implemented here...
+            </div>
+          </div>
+        );
+      
+      case 'change-request':
+        return (
+          <div className="content-placeholder">
+            <h2>Change Request</h2>
+            <p>Create and manage change requests here.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Content will be implemented here...
+            </div>
+          </div>
+        );
+      
+      case 'deployment-manager':
+        return (
+          <div className="content-placeholder">
+            <h2>Deployment Manager</h2>
+            <p>Manage your deployments here.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Content will be implemented here...
+            </div>
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="content-placeholder">
+            <h2>Welcome to Release Management!</h2>
+            <p>Select a menu item from the left panel to get started.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Choose from the navigation menu to begin managing your releases, environments, and requests.
+            </div>
+          </div>
+        );
+    }
   };
 
   return (
@@ -176,7 +303,7 @@ const Home = () => {
                       <button
                         key={item.key}
                         className="nav-subitem"
-                        onClick={() => setActiveContent(item.key)}
+                        onClick={() => handleMenuItemClick(item.key)}
                       >
                         {item.title}
                       </button>
