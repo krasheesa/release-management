@@ -23,6 +23,12 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  
+  // Filterable dropdown states
+  const [systemSearchTerm, setSystemSearchTerm] = useState('');
+  const [releaseSearchTerm, setReleaseSearchTerm] = useState('');
+  const [systemDropdownOpen, setSystemDropdownOpen] = useState(false);
+  const [releaseDropdownOpen, setReleaseDropdownOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -140,6 +146,77 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
     return system ? system.name : 'Unknown System';
   };
 
+  const getReleaseName = (releaseId) => {
+    const release = releases.find(r => r.id === releaseId);
+    return release ? release.name : 'Unknown Release';
+  };
+
+  // Filter functions
+  const getFilteredSystems = () => {
+    if (!systemSearchTerm) return systems;
+    return systems.filter(system => 
+      system.name.toLowerCase().includes(systemSearchTerm.toLowerCase())
+    );
+  };
+
+  const getFilteredReleases = () => {
+    if (!releaseSearchTerm) return releases;
+    return releases.filter(release => 
+      release.name.toLowerCase().includes(releaseSearchTerm.toLowerCase())
+    );
+  };
+
+  // Handle system selection
+  const handleSystemSelect = (systemId) => {
+    setFormData(prev => ({ ...prev, system_id: systemId }));
+    const selectedSystem = systems.find(s => s.id === systemId);
+    setSystemSearchTerm(selectedSystem ? selectedSystem.name : '');
+    setSystemDropdownOpen(false);
+  };
+
+  // Handle release selection
+  const handleReleaseSelect = (releaseId) => {
+    setFormData(prev => ({ ...prev, release_id: releaseId }));
+    if (releaseId) {
+      const selectedRelease = releases.find(r => r.id === releaseId);
+      setReleaseSearchTerm(selectedRelease ? selectedRelease.name : '');
+    } else {
+      setReleaseSearchTerm(''); // Clear search term when no release is selected
+    }
+    setReleaseDropdownOpen(false);
+  };
+
+  // Initialize search terms when data loads
+  React.useEffect(() => {
+    if (formData.system_id && systems.length > 0) {
+      const selectedSystem = systems.find(s => s.id === formData.system_id);
+      if (selectedSystem) {
+        setSystemSearchTerm(selectedSystem.name);
+      }
+    }
+    if (formData.release_id && releases.length > 0) {
+      const selectedRelease = releases.find(r => r.id === formData.release_id);
+      if (selectedRelease) {
+        setReleaseSearchTerm(selectedRelease.name);
+      }
+    }
+  }, [formData.system_id, formData.release_id, systems, releases]);
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.filterable-dropdown')) {
+        setSystemDropdownOpen(false);
+        setReleaseDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   if (loading) {
     return <div className="loading">Loading form data...</div>;
   }
@@ -148,7 +225,7 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
     <div className="build-form">
       <div className="build-form-header">
         <h2>{isEditing ? 'Edit Build' : 'Create New Build'}</h2>
-        <button onClick={handleCancel} className="btn btn-secondary">
+        <button onClick={handleCancel} className="back-btn">
           ← Back to Builds
         </button>
       </div>
@@ -167,22 +244,47 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
             <label htmlFor="system_id" className="form-label">
               System <span className="required">*</span>
             </label>
-            <select
-              id="system_id"
-              name="system_id"
-              value={formData.system_id}
-              onChange={handleInputChange}
-              className="form-control"
-              required
-              disabled={saving}
-            >
-              <option value="">Select a system...</option>
-              {systems.map(system => (
-                <option key={system.id} value={system.id}>
-                  {system.name}
-                </option>
-              ))}
-            </select>
+            <div className="filterable-dropdown">
+              <input
+                type="text"
+                placeholder={isEditing ? "System (cannot be changed)" : "Type to search systems..."}
+                value={systemSearchTerm}
+                onChange={(e) => {
+                  if (!isEditing) {
+                    setSystemSearchTerm(e.target.value);
+                    setSystemDropdownOpen(true);
+                  }
+                }}
+                onFocus={() => !isEditing && setSystemDropdownOpen(true)}
+                className={`form-control ${isEditing ? 'disabled' : ''}`}
+                disabled={saving || isEditing}
+                readOnly={isEditing}
+              />
+              {systemDropdownOpen && !isEditing && (
+                <div className="dropdown-options">
+                  {getFilteredSystems().length > 0 ? (
+                    getFilteredSystems().map(system => (
+                      <div
+                        key={system.id}
+                        className={`dropdown-option ${formData.system_id === system.id ? 'selected' : ''}`}
+                        onClick={() => handleSystemSelect(system.id)}
+                      >
+                        {system.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="dropdown-option no-results">
+                      No systems found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {isEditing && (
+              <small className="form-text text-muted">
+                System cannot be changed when editing a build
+              </small>
+            )}
           </div>
 
           <div className="form-group">
@@ -228,21 +330,45 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
             <label htmlFor="release_id" className="form-label">
               Release <span className="optional">(Optional)</span>
             </label>
-            <select
-              id="release_id"
-              name="release_id"
-              value={formData.release_id}
-              onChange={handleInputChange}
-              className="form-control"
-              disabled={saving}
-            >
-              <option value="">No release assigned</option>
-              {releases.map(release => (
-                <option key={release.id} value={release.id}>
-                  {release.name}
-                </option>
-              ))}
-            </select>
+            <div className="filterable-dropdown">
+              <input
+                type="text"
+                placeholder="Type to search releases or leave empty..."
+                value={releaseSearchTerm}
+                onChange={(e) => {
+                  setReleaseSearchTerm(e.target.value);
+                  setReleaseDropdownOpen(true);
+                }}
+                onFocus={() => setReleaseDropdownOpen(true)}
+                className="form-control"
+                disabled={saving}
+              />
+              {releaseDropdownOpen && (
+                <div className="dropdown-options">
+                  <div
+                    className={`dropdown-option ${!formData.release_id ? 'selected' : ''}`}
+                    onClick={() => handleReleaseSelect('')}
+                  >
+                    No release assigned
+                  </div>
+                  {getFilteredReleases().length > 0 ? (
+                    getFilteredReleases().map(release => (
+                      <div
+                        key={release.id}
+                        className={`dropdown-option ${formData.release_id === release.id ? 'selected' : ''}`}
+                        onClick={() => handleReleaseSelect(release.id)}
+                      >
+                        {release.name}
+                      </div>
+                    ))
+                  ) : releaseSearchTerm ? (
+                    <div className="dropdown-option no-results">
+                      No releases found
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
             <small className="form-text">
               Optionally assign this build to a release
             </small>
