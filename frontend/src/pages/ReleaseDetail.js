@@ -112,8 +112,16 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
 
   const handleAddBuild = async (buildId) => {
     try {
-      // Update the build to associate it with this release
-      await buildService.updateBuild(buildId, { release_id: id });
+      // First get the complete build data
+      const build = await buildService.getBuild(buildId);
+      
+      // Update the build with all required fields plus the new release_id
+      await buildService.updateBuild(buildId, {
+        system_id: build.system_id,
+        version: build.version,
+        build_date: build.build_date,
+        release_id: id
+      });
       
       // Reload builds data
       await loadReleaseData();
@@ -126,8 +134,16 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
 
   const handleRemoveBuild = async (buildId) => {
     try {
-      // Remove association by updating build with null release_id
-      await buildService.updateBuild(buildId, { release_id: null });
+      // First get the complete build data
+      const build = await buildService.getBuild(buildId);
+      
+      // Remove association by updating build with all required fields plus null release_id
+      await buildService.updateBuild(buildId, {
+        system_id: build.system_id,
+        version: build.version,
+        build_date: build.build_date,
+        release_id: null
+      });
       
       // Reload builds data
       await loadReleaseData();

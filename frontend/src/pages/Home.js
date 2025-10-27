@@ -73,8 +73,19 @@ const Home = ({ activeContent: propActiveContent }) => {
     } else if (propActiveContent === 'build-form' && location.pathname === '/builds/new') {
       // Reset build ID when creating new build
       setSelectedBuildId('new');
+    } else if (propActiveContent === 'system-form' && location.pathname === '/systems/new') {
+      // Reset system ID when creating new system
+      setSelectedSystemId('new');
     }
-  }, [propActiveContent, params.id]);
+    
+    // Handle parentSystemId from location state for subsystem creation
+    if (propActiveContent === 'system-form' && location.state?.parentSystemId) {
+      setParentSystemId(location.state.parentSystemId);
+    } else if (propActiveContent !== 'system-form') {
+      // Clear parentSystemId when not in system form
+      setParentSystemId(null);
+    }
+  }, [propActiveContent, params.id, location.state?.parentSystemId]);
 
   const toggleLeftPanel = () => {
     setLeftPanelExpanded(!leftPanelExpanded);

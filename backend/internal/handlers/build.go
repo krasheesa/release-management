@@ -109,19 +109,16 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 		}
 	}
 
-	// Preserve ID and timestamps
-	updates.ID = build.ID
-	updates.CreatedAt = build.CreatedAt
-
-	if err := database.DB.Save(&updates).Error; err != nil {
+	// Update only the provided fields
+	if err := database.DB.Model(&build).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update build"})
 		return
 	}
 
 	// Load relationships for response
-	database.DB.Preload("System").Preload("Release").First(&updates, "id = ?", updates.ID)
+	database.DB.Preload("System").Preload("Release").First(&build, "id = ?", build.ID)
 
-	c.JSON(http.StatusOK, updates)
+	c.JSON(http.StatusOK, build)
 }
 
 // DELETE /builds/:id
