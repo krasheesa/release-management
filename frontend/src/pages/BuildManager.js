@@ -245,7 +245,7 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
     <div className="build-manager">
       <div className="build-manager-header">
         <h2>Build Manager</h2>
-        <button onClick={handleCreateBuild} className="btn btn-primary">
+        <button onClick={handleCreateBuild} className="create-build-btn">
           + Create Build
         </button>
       </div>
