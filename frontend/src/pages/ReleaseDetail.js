@@ -1,0 +1,386 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { releaseService, buildService } from '../services/api';
+import './ReleaseDetail.css';
+
+const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
+  const { id: routeId } = useParams() || {};
+  const navigate = useNavigate();
+  
+  // Use embedded releaseId if provided, otherwise use route params
+  const id = embedded ? releaseId : routeId;
+  const isNew = id === 'new';
+  
+  const [release, setRelease] = useState({
+    name: '',
+    description: '',
+    release_date: '',
+    status: 'draft'
+  });
+  const [releaseBuilds, setReleaseBuilds] = useState([]);
+  const [availableBuilds, setAvailableBuilds] = useState([]);
+  const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [showBuildSelector, setShowBuildSelector] = useState(false);
+
+  // Load data when component mounts
+  useEffect(() => {
+    if (isNew) {
+      loadAvailableBuilds();
+    } else {
+      loadReleaseData();
+      loadAvailableBuilds();
+    }
+  }, [id, isNew]);
+
+  const loadReleaseData = async () => {
+    try {
+      setLoading(true);
+      const [releaseData, buildsData] = await Promise.all([
+        releaseService.getRelease(id),
+        releaseService.getReleaseBuilds(id)
+      ]);
+      
+      // Format date for input
+      if (releaseData.release_date) {
+        releaseData.release_date = releaseData.release_date.split('T')[0];
+      }
+      
+      setRelease(releaseData);
+      setReleaseBuilds(buildsData);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load release data: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailableBuilds = async () => {
+    try {
+      const builds = await buildService.getAllBuilds();
+      setAvailableBuilds(builds);
+    } catch (err) {
+      console.error('Failed to load available builds:', err);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setRelease(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      // Validate required fields
+      if (!release.name) {
+        alert('Name is a required field');
+        return;
+      }
+
+      const releaseData = {
+        ...release,
+        release_date: release.release_date ? `${release.release_date}T00:00:00Z` : null
+      };
+
+      if (isNew) {
+        const newRelease = await releaseService.createRelease(releaseData);
+        if (embedded && onBack) {
+          onBack(); // Go back to release manager to see the new release
+        } else {
+          navigate(`/releases/${newRelease.id}`);
+        }
+      } else {
+        await releaseService.updateRelease(id, releaseData);
+        await loadReleaseData(); // Reload to get updated data
+      }
+      
+      setError(null);
+    } catch (err) {
+      setError('Failed to save release: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddBuild = async (buildId) => {
+    try {
+      // Update the build to associate it with this release
+      await buildService.updateBuild(buildId, { release_id: id });
+      
+      // Reload builds data
+      await loadReleaseData();
+      await loadAvailableBuilds();
+      setShowBuildSelector(false);
+    } catch (err) {
+      alert('Failed to add build to release: ' + err.message);
+    }
+  };
+
+  const handleRemoveBuild = async (buildId) => {
+    try {
+      // Remove association by updating build with null release_id
+      await buildService.updateBuild(buildId, { release_id: null });
+      
+      // Reload builds data
+      await loadReleaseData();
+      await loadAvailableBuilds();
+    } catch (err) {
+      alert('Failed to remove build from release: ' + err.message);
+    }
+  };
+
+  const handleCancel = () => {
+    if (embedded && onBack) {
+      onBack();
+    } else {
+      navigate('/release-manager');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getStatusBadge = (status) => {
+    const statusClasses = {
+      'draft': 'status-draft',
+      'planned': 'status-planned',
+      'in_progress': 'status-in-progress',
+      'deployed': 'status-deployed',
+      'cancelled': 'status-cancelled'
+    };
+    
+    return (
+      <span className={`status-badge ${statusClasses[status] || 'status-default'}`}>
+        {status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
+      </span>
+    );
+  };
+
+  // Get builds that are not associated with any release (or this release if editing)
+  const unassociatedBuilds = availableBuilds.filter(build => 
+    !build.release_id || (build.release_id === id)
+  ).filter(build => 
+    !releaseBuilds.some(releaseBuild => releaseBuild.id === build.id)
+  );
+
+  if (loading) {
+    return (
+      <div className="release-detail">
+        <div className="loading-spinner">Loading release data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="release-detail">
+        <div className="error-message">
+          {error}
+          <div className="error-actions">
+            <button onClick={handleCancel} className="back-btn">
+              Back to Releases
+            </button>
+            {!isNew && (
+              <button onClick={loadReleaseData} className="retry-btn">Retry</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="release-detail">
+      <div className="release-detail-header">
+        <div className="header-left">
+          <button onClick={handleCancel} className="back-btn">
+            ← Back to Releases
+          </button>
+          <h1>{isNew ? 'Create New Release' : 'Release Details'}</h1>
+        </div>
+        <div className="header-actions">
+          <button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="save-btn"
+          >
+            {saving ? 'Saving...' : (isNew ? 'Create Release' : 'Save Changes')}
+          </button>
+        </div>
+      </div>
+
+      <div className="release-form">
+        <div className="form-section">
+          <h2>Basic Information</h2>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="name">Release Name *</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={release.name}
+                onChange={handleInputChange}
+                placeholder="Enter release name"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="release_date">Release Date</label>
+              <input
+                type="date"
+                id="release_date"
+                name="release_date"
+                value={release.release_date}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="status">Status</label>
+              <select
+                id="status"
+                name="status"
+                value={release.status}
+                onChange={handleInputChange}
+              >
+                <option value="draft">Draft</option>
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="deployed">Deployed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group full-width">
+            <label htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              value={release.description}
+              onChange={handleInputChange}
+              placeholder="Enter release description"
+              rows="4"
+            />
+          </div>
+        </div>
+
+        {!isNew && (
+          <div className="form-section">
+            <div className="section-header">
+              <h2>Associated Builds</h2>
+              <button 
+                onClick={() => setShowBuildSelector(true)}
+                className="add-build-btn"
+                disabled={unassociatedBuilds.length === 0}
+              >
+                ➕ Add Build
+              </button>
+            </div>
+
+            {releaseBuilds.length > 0 ? (
+              <div className="builds-list">
+                {releaseBuilds.map(build => (
+                  <div key={build.id} className="build-card">
+                    <div className="build-info">
+                      <div className="build-header">
+                        <h4>{build.name}</h4>
+                        <span className="build-version">v{build.version}</span>
+                        {getStatusBadge(build.status)}
+                      </div>
+                      <p className="build-description">{build.description}</p>
+                      <div className="build-meta">
+                        <span>📅 Built: {formatDate(build.build_date)}</span>
+                        <span>🏗️ System: {build.system?.name || 'Unknown'}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveBuild(build.id)}
+                      className="remove-build-btn"
+                      title="Remove from release"
+                    >
+                      ✖️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-builds">
+                <p>No builds associated with this release yet.</p>
+                {unassociatedBuilds.length > 0 && (
+                  <button 
+                    onClick={() => setShowBuildSelector(true)}
+                    className="add-build-btn"
+                  >
+                    Add Your First Build
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Build Selector Modal */}
+      {showBuildSelector && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Add Build to Release</h3>
+              <button 
+                onClick={() => setShowBuildSelector(false)}
+                className="modal-close"
+              >
+                ✖️
+              </button>
+            </div>
+            <div className="modal-body">
+              {unassociatedBuilds.length > 0 ? (
+                <div className="available-builds">
+                  {unassociatedBuilds.map(build => (
+                    <div key={build.id} className="available-build-item">
+                      <div className="build-info">
+                        <div className="build-header">
+                          <h4>{build.name}</h4>
+                          <span className="build-version">v{build.version}</span>
+                          {getStatusBadge(build.status)}
+                        </div>
+                        <p className="build-description">{build.description}</p>
+                        <div className="build-meta">
+                          <span>📅 {formatDate(build.build_date)}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleAddBuild(build.id)}
+                        className="add-btn"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-available-builds">
+                  No unassociated builds available. All builds are already assigned to releases.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ReleaseDetail;

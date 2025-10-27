@@ -1,0 +1,314 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { systemService, buildService } from '../services/api';
+import './SystemManager.css';
+
+const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
+  const navigate = useNavigate();
+  const [systems, setSystems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [expandedSystems, setExpandedSystems] = useState({});
+  const [systemSubsystems, setSystemSubsystems] = useState({});
+
+  // Load systems on component mount
+  useEffect(() => {
+    loadSystems();
+  }, []);
+
+  const loadSystems = async () => {
+    try {
+      setLoading(true);
+      const data = await systemService.getAllSystems();
+      setSystems(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load systems: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSystemSubsystems = async (systemId) => {
+    try {
+      // Get subsystems for this system
+      const subsystems = await systemService.getSubsystems(systemId);
+      setSystemSubsystems(prev => ({
+        ...prev,
+        [systemId]: subsystems
+      }));
+    } catch (err) {
+      console.error('Failed to load subsystems for system:', err);
+    }
+  };
+
+  const toggleSystemExpansion = (systemId) => {
+    const isExpanded = expandedSystems[systemId];
+    
+    setExpandedSystems(prev => ({
+      ...prev,
+      [systemId]: !isExpanded
+    }));
+
+    // Load subsystems if expanding and not already loaded
+    if (!isExpanded && !systemSubsystems[systemId]) {
+      loadSystemSubsystems(systemId);
+    }
+  };
+
+  const handleSystemClick = (systemId) => {
+    if (embedded && onNavigateToDetail) {
+      onNavigateToDetail(systemId);
+    } else {
+      navigate(`/systems/${systemId}`);
+    }
+  };
+
+  const handleCreateSystem = () => {
+    if (embedded && onNavigateToDetail) {
+      onNavigateToDetail('new');
+    } else {
+      navigate('/systems/new');
+    }
+  };
+
+  const handleDeleteSystem = async (systemId, e) => {
+    e.stopPropagation();
+    
+    // Check if system has subsystems
+    const subsystems = systems.filter(s => s.parent_id === systemId);
+    if (subsystems.length > 0) {
+      alert('Cannot delete system with subsystems. Please delete subsystems first.');
+      return;
+    }
+    
+    if (window.confirm('Are you sure you want to delete this system?')) {
+      try {
+        await systemService.deleteSystem(systemId);
+        loadSystems(); // Reload the list
+      } catch (err) {
+        alert('Failed to delete system: ' + err.message);
+      }
+    }
+  };
+
+  // Filter and sort systems (only show root systems, not subsystems)
+  const filteredAndSortedSystems = systems
+    .filter(system => !system.parent_id) // Only show systems without parent (root systems)
+    .filter(system => 
+      system.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      system.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aValue = a[sortBy] || '';
+      let bValue = b[sortBy] || '';
+      
+      // Handle date sorting
+      if (sortBy === 'created_at') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      } else {
+        aValue = aValue.toString().toLowerCase();
+        bValue = bValue.toString().toLowerCase();
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getSystemType = (system) => {
+    const hasSubsystems = systems.some(s => s.parent_id === system.id);
+    return hasSubsystems ? 'Parent System' : 'System';
+  };
+
+  const getParentSystemName = (parentId) => {
+    const parent = systems.find(s => s.id === parentId);
+    return parent ? parent.name : 'Unknown';
+  };
+
+  if (loading) {
+    return (
+      <div className="system-manager">
+        <div className="loading-spinner">Loading systems...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="system-manager">
+        <div className="error-message">
+          {error}
+          <button onClick={loadSystems} className="retry-btn">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="system-manager">
+      <div className="system-manager-header">
+        <h1>System Manager</h1>
+        <button onClick={handleCreateSystem} className="create-system-btn">
+          ➕ Create New System
+        </button>
+      </div>
+
+      <div className="system-controls">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search systems..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <div className="sort-controls">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="sort-select"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="created_at">Sort by Created Date</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="sort-order-btn"
+          >
+            {sortOrder === 'asc' ? '⬆️' : '⬇️'}
+          </button>
+        </div>
+      </div>
+
+      <div className="systems-list">
+        {filteredAndSortedSystems.length === 0 ? (
+          <div className="empty-state">
+            <h3>No systems found</h3>
+            <p>Create your first system to get started!</p>
+            <button onClick={handleCreateSystem} className="create-system-btn">
+              Create System
+            </button>
+          </div>
+        ) : (
+          filteredAndSortedSystems.map(system => (
+            <div key={system.id} className="system-card">
+              <div 
+                className="system-header"
+                onClick={() => toggleSystemExpansion(system.id)}
+              >
+                <div className="system-info">
+                  <div className="system-title">
+                    <h3>{system.name}</h3>
+                    <span className="system-type">{getSystemType(system)}</span>
+                  </div>
+                  <p className="system-description">{system.description}</p>
+                  <div className="system-meta">
+                    <span className="system-date">
+                      📅 {formatDate(system.created_at)}
+                    </span>
+                    {system.parent_id && (
+                      <span className="parent-system">
+                        🔗 Parent: {getParentSystemName(system.parent_id)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="system-actions">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSystemClick(system.id);
+                    }}
+                    className="view-btn"
+                    title="View System"
+                  >
+                    👁️
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (embedded && onNavigateToDetail) {
+                        onNavigateToDetail(system.id + '/edit');
+                      } else {
+                        navigate(`/systems/${system.id}/edit`);
+                      }
+                    }}
+                    className="edit-btn"
+                    title="Edit System"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteSystem(system.id, e)}
+                    className="delete-btn"
+                    title="Delete System"
+                  >
+                    🗑️
+                  </button>
+                  <button className="expand-btn">
+                    {expandedSystems[system.id] ? '▼' : '▶️'}
+                  </button>
+                </div>
+              </div>
+
+              {expandedSystems[system.id] && (
+                <div className="system-subsystems">
+                  <h4>Subsystems</h4>
+                  {systemSubsystems[system.id] ? (
+                    systemSubsystems[system.id].length > 0 ? (
+                      <div className="subsystems-list">
+                        {systemSubsystems[system.id].map(subsystem => (
+                          <div key={subsystem.id} className="subsystem-item">
+                            <div className="subsystem-info">
+                              <strong>{subsystem.name}</strong>
+                              <p className="subsystem-description">{subsystem.description}</p>
+                            </div>
+                            <div className="subsystem-meta">
+                              <span className="subsystem-date">
+                                📅 {formatDate(subsystem.created_at)}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSystemClick(subsystem.id);
+                                }}
+                                className="view-subsystem-btn"
+                                title="View Subsystem"
+                              >
+                                👁️ View
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="no-subsystems">No subsystems for this system</p>
+                    )
+                  ) : (
+                    <p className="loading-subsystems">Loading subsystems...</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SystemManager;
