@@ -6,6 +6,8 @@ import ReleaseDetail from './ReleaseDetail';
 import SystemManager from './SystemManager';
 import SystemDetail from './SystemDetail';
 import SystemForm from './SystemForm';
+import BuildManager from './BuildManager';
+import BuildForm from './BuildForm';
 
 const Home = ({ activeContent: propActiveContent }) => {
   const { user, logout, justLoggedIn, setJustLoggedIn } = useAuth();
@@ -20,6 +22,7 @@ const Home = ({ activeContent: propActiveContent }) => {
   const [activeContent, setActiveContent] = useState(propActiveContent || 'welcome');
   const [selectedReleaseId, setSelectedReleaseId] = useState(params.id || null);
   const [selectedSystemId, setSelectedSystemId] = useState(params.id || null);
+  const [selectedBuildId, setSelectedBuildId] = useState(params.id || null);
   const [parentSystemId, setParentSystemId] = useState(null);
 
   // Handle welcome modal logic
@@ -37,7 +40,7 @@ const Home = ({ activeContent: propActiveContent }) => {
       setActiveContent(propActiveContent);
       
       // Auto-expand relevant menu based on active content
-      if (propActiveContent.includes('release') || propActiveContent.includes('system')) {
+      if (propActiveContent.includes('release') || propActiveContent.includes('build') || propActiveContent.includes('system')) {
         setExpandedMenus(prev => ({
           ...prev,
           'release': true
@@ -64,7 +67,12 @@ const Home = ({ activeContent: propActiveContent }) => {
         setSelectedReleaseId(params.id);
       } else if (propActiveContent === 'system-detail' || propActiveContent === 'system-form') {
         setSelectedSystemId(params.id);
+      } else if (propActiveContent === 'build-form') {
+        setSelectedBuildId(params.id);
       }
+    } else if (propActiveContent === 'build-form' && location.pathname === '/builds/new') {
+      // Reset build ID when creating new build
+      setSelectedBuildId('new');
     }
   }, [propActiveContent, params.id]);
 
@@ -86,6 +94,7 @@ const Home = ({ activeContent: propActiveContent }) => {
   const handleMenuItemClick = (itemKey) => {
     const routeMap = {
       'release-manager': '/release-manager',
+      'build-manager': '/build-manager',
       'system-manager': '/systems',
       'environment-manager': '/environment-manager',
       'booking-request': '/booking-request',
@@ -134,6 +143,21 @@ const Home = ({ activeContent: propActiveContent }) => {
     navigate('/systems');
   };
 
+  const handleBuildNavigation = (buildId) => {
+    if (buildId === 'new') {
+      navigate('/builds/new');
+    } else if (buildId && buildId.includes('/edit')) {
+      const id = buildId.replace('/edit', '');
+      navigate(`/builds/${id}/edit`);
+    } else {
+      navigate(`/builds/${buildId}`);
+    }
+  };
+
+  const handleBackToBuildManager = () => {
+    navigate('/build-manager');
+  };
+
   const menuItems = [
     {
       key: 'release',
@@ -141,6 +165,7 @@ const Home = ({ activeContent: propActiveContent }) => {
       icon: '📋',
       items: [
         { key: 'release-manager', title: 'Manager' },
+        { key: 'build-manager', title: 'Build' },
         { key: 'system-manager', title: 'Systems' }
       ]
     },
@@ -187,6 +212,23 @@ const Home = ({ activeContent: propActiveContent }) => {
             releaseId={selectedReleaseId}
             embedded={true}
             onBack={handleBackToReleaseManager}
+          />
+        );
+      
+      case 'build-manager':
+        return (
+          <BuildManager 
+            embedded={true} 
+            onNavigateToDetail={handleBuildNavigation}
+          />
+        );
+      
+      case 'build-form':
+        return (
+          <BuildForm 
+            buildId={selectedBuildId}
+            embedded={true}
+            onBack={handleBackToBuildManager}
           />
         );
       

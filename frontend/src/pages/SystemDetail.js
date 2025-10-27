@@ -233,17 +233,16 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
             {systemBuilds.map(build => (
               <div key={build.id} className="build-card">
                 <div className="build-header">
-                  <h3>{build.name}</h3>
+                  <h3>{build.system?.name || 'Unknown System'}</h3>
                   <span className="build-version">v{build.version}</span>
                 </div>
                 <div className="build-info">
-                  <p>{build.description}</p>
                   <div className="build-meta">
                     <span className="build-date">
                       📅 {formatDate(build.build_date)}
                     </span>
-                    <span className={`build-status status-${build.status}`}>
-                      {build.status?.toUpperCase() || 'UNKNOWN'}
+                    <span className="build-release">
+                      📦 {build.release?.name || 'No Release'}
                     </span>
                   </div>
                 </div>
@@ -356,15 +355,15 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
                           {subsystemBuilds[subsystem.id].map(build => (
                             <div key={build.id} className="build-item">
                               <div className="build-info">
-                                <strong>{build.name}</strong>
+                                <strong>{build.system?.name || 'Unknown System'}</strong>
                                 <span className="build-version">v{build.version}</span>
                               </div>
                               <div className="build-meta">
                                 <span className="build-date">
                                   {formatDate(build.build_date)}
                                 </span>
-                                <span className="build-status">
-                                  {build.status?.toUpperCase() || 'UNKNOWN'}
+                                <span className="build-release">
+                                  📦 {build.release?.name || 'No Release'}
                                 </span>
                               </div>
                             </div>

@@ -8,6 +8,8 @@ import ReleaseDetail from './pages/ReleaseDetail';
 import SystemManager from './pages/SystemManager';
 import SystemDetail from './pages/SystemDetail';
 import SystemForm from './pages/SystemForm';
+import BuildManager from './pages/BuildManager';
+import BuildForm from './pages/BuildForm';
 
 // Simple auth context
 const AuthContext = React.createContext();
@@ -136,6 +138,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home activeContent="release-manager" />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/build-manager" 
+            element={
+              <ProtectedRoute>
+                <Home activeContent="build-manager" />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/builds/new" 
+            element={
+              <ProtectedRoute>
+                <Home activeContent="build-form" />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/builds/:id/edit" 
+            element={
+              <ProtectedRoute>
+                <Home activeContent="build-form" />
               </ProtectedRoute>
             } 
           />

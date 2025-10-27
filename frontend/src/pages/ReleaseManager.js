@@ -253,14 +253,13 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
                         {releaseBuilds[release.id].map(build => (
                           <div key={build.id} className="build-item">
                             <div className="build-info">
-                              <strong>{build.name}</strong>
+                              <strong>{build.system?.name || 'Unknown System'}</strong>
                               <span className="build-version">v{build.version}</span>
                             </div>
                             <div className="build-meta">
                               <span className="build-date">
                                 {formatDate(build.build_date)}
                               </span>
-                              {getStatusBadge(build.status)}
                             </div>
                           </div>
                         ))}
