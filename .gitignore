@@ -1,0 +1,150 @@
+# Documentation - Local development notes and docs
+documentation/
+
+# Environment variables - Contains sensitive information
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Go specific
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+
+# Node.js / React specific
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Build outputs
+build/
+dist/
+
+# React build output
+frontend/build/
+
+# Logs
+logs/
+*.log
+
+# Docker specific
+# Don't ignore docker-compose.yml and Dockerfile
+
+# IDE specific
+# VSCode
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+# Database files (if running locally)
+*.db
+*.sqlite
+*.sqlite3
+
+# SSL certificates (if any)
+*.pem
+*.key
+*.crt
+*.cert
+
+# Terraform (if used for infrastructure)
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Local development tools
+.venv/
+venv/
+env/
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+
+# Testing
+.coverage
+htmlcov/
+
+# Miscellaneous
+*.zip
+*.tar.gz
+*.rar
