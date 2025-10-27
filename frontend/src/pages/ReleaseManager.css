@@ -153,6 +153,30 @@
   font-size: 1.4rem;
 }
 
+.release-type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+}
+
+.release-type-major {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+}
+
+.release-type-minor {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+}
+
+.release-type-hotfix {
+  background: linear-gradient(135deg, #fd7e14, #e8610e);
+  color: white;
+}
+
 .release-version {
   background: linear-gradient(135deg, #6c757d, #495057);
   color: white;

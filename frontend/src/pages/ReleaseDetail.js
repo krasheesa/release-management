@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { releaseService, buildService } from '../services/api';
+import { useNotification } from '../components/NotificationProvider';
 import './ReleaseDetail.css';
 
 const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
   const { id: routeId } = useParams() || {};
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotification();
   
   // Use embedded releaseId if provided, otherwise use route params
   const id = embedded ? releaseId : routeId;
@@ -92,6 +94,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
 
       if (isNew) {
         const newRelease = await releaseService.createRelease(releaseData);
+        showSuccess('Release created successfully!');
         if (embedded && onBack) {
           onBack(); // Go back to release manager to see the new release
         } else {
@@ -99,12 +102,15 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
         }
       } else {
         await releaseService.updateRelease(id, releaseData);
+        showSuccess('Release updated successfully!');
         await loadReleaseData(); // Reload to get updated data
       }
       
       setError(null);
     } catch (err) {
-      setError('Failed to save release: ' + err.message);
+      const errorMessage = 'Failed to save release: ' + err.message;
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }

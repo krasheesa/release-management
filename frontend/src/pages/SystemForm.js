@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { systemService } from '../services/api';
+import { useNotification } from '../components/NotificationProvider';
 import './SystemForm.css';
 
 const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
@@ -8,6 +9,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
   const location = useLocation();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const { showSuccess, showError } = useNotification();
   const parentId = parentSystemId || location.state?.parentSystemId || searchParams.get('parent');
   const currentSystemId = systemId || id;
   
@@ -87,8 +89,10 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
 
       if (isEditing) {
         await systemService.updateSystem(currentSystemId, systemData);
+        showSuccess('System updated successfully!');
       } else {
         await systemService.createSystem(systemData);
+        showSuccess('System created successfully!');
       }
 
       // Navigate back to the appropriate page
@@ -100,7 +104,9 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
         navigate('/systems');
       }
     } catch (err) {
-      setError('Failed to save system: ' + err.message);
+      const errorMessage = 'Failed to save system: ' + err.message;
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { buildService, systemService, releaseService } from '../services/api';
+import { useNotification } from '../components/NotificationProvider';
 import './BuildForm.css';
 
 const BuildForm = ({ buildId, embedded = false, onBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
+  const { showSuccess, showError } = useNotification();
   const currentBuildId = buildId || id;
   const isEditing = currentBuildId && currentBuildId !== 'new';
   
@@ -104,8 +106,10 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
 
       if (isEditing) {
         await buildService.updateBuild(currentBuildId, buildData);
+        showSuccess('Build updated successfully!');
       } else {
         await buildService.createBuild(buildData);
+        showSuccess('Build created successfully!');
       }
 
       // Navigate back
@@ -115,7 +119,9 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
         navigate('/build-manager');
       }
     } catch (err) {
-      setError('Failed to save build: ' + err.message);
+      const errorMessage = 'Failed to save build: ' + err.message;
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }

@@ -10,6 +10,7 @@ import SystemDetail from './pages/SystemDetail';
 import SystemForm from './pages/SystemForm';
 import BuildManager from './pages/BuildManager';
 import BuildForm from './pages/BuildForm';
+import { NotificationProvider } from './components/NotificationProvider';
 
 // Simple auth context
 const AuthContext = React.createContext();
@@ -245,4 +246,12 @@ function App() {
   );
 }
 
-export default App;
+const AppWithNotifications = () => {
+  return (
+    <NotificationProvider>
+      <App />
+    </NotificationProvider>
+  );
+};
+
+export default AppWithNotifications;
