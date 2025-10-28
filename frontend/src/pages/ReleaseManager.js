@@ -209,7 +209,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
               >
                 <div className="release-info">
                   <div className="release-title">
-                    <h3>{release.name} - <span className={`release-type release-type-${release.type?.toLowerCase()}`}>{release.type}</span></h3>
+                    <h3>{release.name} <span className={`release-type release-type-${release.type?.toLowerCase()}`}>{release.type}</span></h3>
                   </div>
                   <p className="release-description">{release.description}</p>
                   <div className="release-meta">
