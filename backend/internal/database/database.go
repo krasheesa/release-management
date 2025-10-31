@@ -37,6 +37,7 @@ func Connect(cfg *config.Config) error {
 		&models.System{},
 		&models.Build{},
 		&models.Environment{},
+		&models.EnvironmentSystem{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}

@@ -80,6 +80,14 @@ func Setup(cfg *config.Config) *gin.Engine {
 			environments.POST("", environmentHandler.CreateEnvironment)
 			environments.PUT("/:id", environmentHandler.UpdateEnvironment)
 			environments.DELETE("/:id", environmentHandler.DeleteEnvironment)
+
+			// Environment-Systems endpoints
+			environments.GET("/:id/systems", handlers.GetEnvironmentSystems)
+			environments.GET("/:id/systems/:systemId", handlers.GetEnvironmentSystem)
+			environments.POST("/:id/systems", handlers.AddSystemToEnvironment)
+			environments.PUT("/:id/systems/:systemId", handlers.UpdateEnvironmentSystem)
+			environments.DELETE("/:id/systems/:systemId", handlers.RemoveSystemFromEnvironment)
+			environments.POST("/:id/systems/sync", handlers.SyncEnvironmentSystemVersions)
 		}
 	}
 

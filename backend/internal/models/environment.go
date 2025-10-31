@@ -26,7 +26,8 @@ type Environment struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 
 	// Relationships
-	Release Release `json:"release,omitempty" gorm:"foreignKey:ReleaseID"`
+	Release            Release             `json:"release,omitempty" gorm:"foreignKey:ReleaseID"`
+	EnvironmentSystems []EnvironmentSystem `json:"environment_systems,omitempty" gorm:"foreignKey:EnvironmentID"`
 }
 
 func (e *Environment) BeforeCreate(tx *gorm.DB) error {
