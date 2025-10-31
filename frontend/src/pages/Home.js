@@ -277,7 +277,7 @@ const Home = ({ activeContent: propActiveContent }) => {
             <h2>Environment Manager</h2>
             <p>Manage your deployment environments here.</p>
             <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
-              Content will be implemented here...
+              Feature are still WIP. Soon to come!
             </div>
           </div>
         );
@@ -288,7 +288,7 @@ const Home = ({ activeContent: propActiveContent }) => {
             <h2>Booking Request</h2>
             <p>Create and manage booking requests here.</p>
             <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
-              Content will be implemented here...
+              Feature are still WIP. Soon to come!
             </div>
           </div>
         );
@@ -299,7 +299,7 @@ const Home = ({ activeContent: propActiveContent }) => {
             <h2>Change Request</h2>
             <p>Create and manage change requests here.</p>
             <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
-              Content will be implemented here...
+              Feature are still WIP. Soon to come!
             </div>
           </div>
         );
@@ -310,7 +310,7 @@ const Home = ({ activeContent: propActiveContent }) => {
             <h2>Deployment Manager</h2>
             <p>Manage your deployments here.</p>
             <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
-              Content will be implemented here...
+              Feature are still WIP. Soon to come!
             </div>
           </div>
         );
@@ -379,7 +379,11 @@ const Home = ({ activeContent: propActiveContent }) => {
         {/* Left Panel */}
         <div className={`left-panel ${leftPanelExpanded ? 'expanded' : 'collapsed'}`}>
           <button className="toggle-btn" onClick={toggleLeftPanel}>
-            {leftPanelExpanded ? '◀' : '▶'}
+            <div className={`hamburger-icon ${leftPanelExpanded ? 'open' : ''}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </button>
           
           <ul className="nav-menu">
