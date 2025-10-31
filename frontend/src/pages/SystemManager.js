@@ -11,6 +11,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [typeFilter, setTypeFilter] = useState('root'); // Default to root systems only
   const [expandedSystems, setExpandedSystems] = useState({});
   const [systemSubsystems, setSystemSubsystems] = useState({});
 
@@ -95,9 +96,18 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
     }
   };
 
-  // Filter and sort systems (only show root systems, not subsystems)
+  // Filter and sort systems
   const filteredAndSortedSystems = systems
-    .filter(system => !system.parent_id) // Only show systems without parent (root systems)
+    .filter(system => {
+      // Type filter
+      if (typeFilter === 'all') {
+        return true; // Show all types
+      } else if (typeFilter === 'root') {
+        return system.type !== 'subsystems'; // Show parent_systems and systems only
+      } else {
+        return system.type === typeFilter; // Show specific type
+      }
+    })
     .filter(system => 
       system.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       system.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,6 +138,11 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   };
 
   const getSystemType = (system) => {
+    if (system.type === 'parent_systems') return 'Parent System';
+    if (system.type === 'subsystems') return 'Subsystem';
+    if (system.type === 'systems') return 'System';
+    
+    // Fallback for systems without type field (backward compatibility)
     const hasSubsystems = systems.some(s => s.parent_id === system.id);
     return hasSubsystems ? 'Parent System' : 'System';
   };
@@ -136,6 +151,19 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
     const parent = systems.find(s => s.id === parentId);
     return parent ? parent.name : 'Unknown';
   };
+
+  const getSystemCounts = () => {
+    const counts = {
+      all: systems.length,
+      root: systems.filter(s => s.type !== 'subsystems').length,
+      parent_systems: systems.filter(s => s.type === 'parent_systems').length,
+      systems: systems.filter(s => s.type === 'systems').length,
+      subsystems: systems.filter(s => s.type === 'subsystems').length
+    };
+    return counts;
+  };
+
+  const systemCounts = getSystemCounts();
 
   if (loading) {
     return (
@@ -159,7 +187,15 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   return (
     <div className="system-manager">
       <div className="system-manager-header">
-        <h1>System Manager</h1>
+        <div className="header-left">
+          <h1>System Manager</h1>
+          <div className="results-info">
+            {typeFilter === 'all' ? 
+              `Showing ${filteredAndSortedSystems.length} of ${systems.length} systems` :
+              `Showing ${filteredAndSortedSystems.length} ${typeFilter.replace('_', ' ')} ${filteredAndSortedSystems.length === 1 ? 'system' : 'systems'}`
+            }
+          </div>
+        </div>
         <button onClick={handleCreateSystem} className="create-system-btn">
           ➕ Create New System
         </button>
@@ -174,6 +210,31 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
+        </div>
+
+        <div className="filter-controls">
+          <label htmlFor="type-filter" className="filter-label">Filter by Type:</label>
+                    <select
+            id="type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="root">Default ({systemCounts.root})</option>
+            <option value="all">All Systems ({systemCounts.all})</option>
+            <option value="parent_systems">Parent Systems ({systemCounts.parent_systems})</option>
+            <option value="systems">Systems ({systemCounts.systems})</option>
+            <option value="subsystems">Subsystems ({systemCounts.subsystems})</option>
+          </select>
+          {typeFilter !== 'root' && (
+            <button
+              onClick={() => setTypeFilter('root')}
+              className="clear-filter-btn"
+              title="Reset to default filter"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="sort-controls">

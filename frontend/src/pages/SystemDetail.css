@@ -58,6 +58,34 @@
   text-transform: uppercase;
 }
 
+/* Type-specific colors */
+.system-type.parent-system {
+  background: linear-gradient(135deg, #6f42c1, #9561e2);
+}
+
+.system-type.subsystem {
+  background: linear-gradient(135deg, #28a745, #34ce57);
+}
+
+.system-type.system {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.system-type-info {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.system-type-info {
+  background-color: #e7f3ff;
+  color: #0366d6;
+}
+
 .edit-system-btn {
   background: linear-gradient(135deg, #ffc107, #fd7e14);
   color: white;

@@ -258,7 +258,15 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
           </button>
           <div className="system-title">
             <h1>{system.name}</h1>
-            <span className="system-type">System</span>
+            <span className={`system-type ${
+              system.type === 'parent_systems' ? 'parent-system' :
+              system.type === 'subsystems' ? 'subsystem' :
+              'system'
+            }`}>
+              {system.type === 'parent_systems' ? 'Parent System' :
+               system.type === 'subsystems' ? 'Subsystem' :
+               system.type === 'systems' ? 'System' : 'System'}
+            </span>
           </div>
         </div>
         <button 
@@ -284,6 +292,14 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
               <span>{system.name}</span>
             </div>
             <div className="info-item">
+              <label>Type:</label>
+              <span className="system-type-info">
+                {system.type === 'parent_systems' ? 'Parent System' :
+                 system.type === 'subsystems' ? 'Subsystem' :
+                 system.type === 'systems' ? 'System' : 'System'}
+              </span>
+            </div>
+            <div className="info-item">
               <label>Description:</label>
               <span>{system.description || 'No description provided'}</span>
             </div>
@@ -299,94 +315,96 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
         </div>
       </div>
 
-      {/* System Builds Section */}
-      <div className="builds-section">
-        <div className="builds-header">
-          <h2>Associated Builds ({systemBuilds.length})</h2>
-          
-          {systemBuilds.length > 0 && (
-            <div className="builds-controls">
-              <div className="build-search-box">
-                <input
-                  type="text"
-                  placeholder="Search by version or release..."
-                  value={buildSearchTerm}
-                  onChange={(e) => setBuildSearchTerm(e.target.value)}
-                  className="build-search-input"
-                />
+      {/* System Builds Section - Only show for systems and subsystems, not parent_systems */}
+      {system.type !== 'parent_systems' && (
+        <div className="builds-section">
+          <div className="builds-header">
+            <h2>Associated Builds ({systemBuilds.length})</h2>
+            
+            {systemBuilds.length > 0 && (
+              <div className="builds-controls">
+                <div className="build-search-box">
+                  <input
+                    type="text"
+                    placeholder="Search by version or release..."
+                    value={buildSearchTerm}
+                    onChange={(e) => setBuildSearchTerm(e.target.value)}
+                    className="build-search-input"
+                  />
+                </div>
               </div>
+            )}
+          </div>
+
+          {systemBuilds.length > 0 ? (
+            <div className="builds-table-container">
+              {filteredAndSortedBuilds.length === 0 ? (
+                <div className="no-builds-found">
+                  <p>No builds match your search criteria</p>
+                </div>
+              ) : (
+                <table className="builds-table">
+                  <thead>
+                    <tr>
+                      <th 
+                        onClick={() => handleBuildSort('version')}
+                        className="sortable"
+                      >
+                        Version {getBuildSortIcon('version')}
+                      </th>
+                      <th 
+                        onClick={() => handleBuildSort('release')}
+                        className="sortable"
+                      >
+                        Release {getBuildSortIcon('release')}
+                      </th>
+                      <th 
+                        onClick={() => handleBuildSort('build_date')}
+                        className="sortable"
+                      >
+                        Build Date {getBuildSortIcon('build_date')}
+                      </th>
+                      <th 
+                        onClick={() => handleBuildSort('created_at')}
+                        className="sortable"
+                      >
+                        Created Date {getBuildSortIcon('created_at')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAndSortedBuilds.map(build => (
+                      <tr key={build.id} className="build-row">
+                        <td className="version-cell">
+                          <span className="version-badge">v{build.version}</span>
+                        </td>
+                        <td className="release-cell">
+                          {build.release?.name || (
+                            <span className="no-release">No Release</span>
+                          )}
+                        </td>
+                        <td className="date-cell">
+                          {formatDateTime(build.build_date)}
+                        </td>
+                        <td className="date-cell">
+                          {formatDateTime(build.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : (
+            <div className="empty-builds">
+              <p>No builds associated with this {system.type === 'subsystems' ? 'subsystem' : 'system'}</p>
             </div>
           )}
         </div>
+      )}
 
-        {systemBuilds.length > 0 ? (
-          <div className="builds-table-container">
-            {filteredAndSortedBuilds.length === 0 ? (
-              <div className="no-builds-found">
-                <p>No builds match your search criteria</p>
-              </div>
-            ) : (
-              <table className="builds-table">
-                <thead>
-                  <tr>
-                    <th 
-                      onClick={() => handleBuildSort('version')}
-                      className="sortable"
-                    >
-                      Version {getBuildSortIcon('version')}
-                    </th>
-                    <th 
-                      onClick={() => handleBuildSort('release')}
-                      className="sortable"
-                    >
-                      Release {getBuildSortIcon('release')}
-                    </th>
-                    <th 
-                      onClick={() => handleBuildSort('build_date')}
-                      className="sortable"
-                    >
-                      Build Date {getBuildSortIcon('build_date')}
-                    </th>
-                    <th 
-                      onClick={() => handleBuildSort('created_at')}
-                      className="sortable"
-                    >
-                      Created Date {getBuildSortIcon('created_at')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAndSortedBuilds.map(build => (
-                    <tr key={build.id} className="build-row">
-                      <td className="version-cell">
-                        <span className="version-badge">v{build.version}</span>
-                      </td>
-                      <td className="release-cell">
-                        {build.release?.name || (
-                          <span className="no-release">No Release</span>
-                        )}
-                      </td>
-                      <td className="date-cell">
-                        {formatDateTime(build.build_date)}
-                      </td>
-                      <td className="date-cell">
-                        {formatDateTime(build.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        ) : (
-          <div className="empty-builds">
-            <p>No builds associated with this system</p>
-          </div>
-        )}
-      </div>
-
-      {/* Subsystems Section - Only show for root systems */}
-      {!system.parent_id && (
+      {/* Subsystems Section - Only show for parent systems */}
+      {system.type === 'parent_systems' && (
         <div className="subsystems-section">
           <div className="subsystems-header">
             <h2>Subsystems ({subsystems.length})</h2>

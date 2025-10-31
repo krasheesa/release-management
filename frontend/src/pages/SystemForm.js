@@ -16,6 +16,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    type: '',
     parent_id: parentId || ''
   });
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
       setFormData({
         name: system.name || '',
         description: system.description || '',
+        type: system.type || '',
         parent_id: system.parent_id || ''
       });
     } catch (err) {
@@ -63,10 +65,24 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Auto-set parent_id based on type selection
+      if (name === 'type') {
+        if (value === 'subsystems') {
+          // Keep parent_id as is for subsystems
+        } else {
+          // Clear parent_id for parent_systems and systems
+          newData.parent_id = '';
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -77,6 +93,16 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
       return;
     }
 
+    if (!formData.type) {
+      setError('System type is required');
+      return;
+    }
+
+    if (formData.type === 'subsystems' && !formData.parent_id) {
+      setError('Parent system is required for subsystems');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -84,7 +110,8 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
       const systemData = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        parent_id: formData.parent_id || null
+        type: formData.type,
+        parent_id: formData.type === 'subsystems' ? formData.parent_id : null
       };
 
       if (isEditing) {
@@ -153,7 +180,11 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
   return (
     <div className="system-form">
       <div className="form-header">
-        <h1>{isEditing ? 'Edit System' : (parentId ? 'Create New Subsystem' : 'Create New System')}</h1>
+        <h1>
+          {isEditing ? 'Edit System' : 
+           formData.type ? `Create New ${formData.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}` :
+           'Create New System'}
+        </h1>
         <button onClick={handleCancel} className="cancel-btn">
           ← Back
         </button>
@@ -194,34 +225,59 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="parent_id">Parent System</label>
-          {parentId ? (
-            <input
-              type="text"
-              id="parent_id"
-              value={systems.find(s => s.id === parentId)?.name || 'Loading...'}
-              disabled
-              style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-            />
-          ) : (
-            <select
-              id="parent_id"
-              name="parent_id"
-              value={formData.parent_id}
-              onChange={handleInputChange}
-              disabled={loading}
-            >
-              <option value="">None (Root System)</option>
-              {getAvailableParents()
-                .filter(system => !system.parent_id) // Only show root systems
-                .map(system => (
-                  <option key={system.id} value={system.id}>
-                    {system.name}
-                  </option>
-                ))}
-            </select>
-          )}
+          <label htmlFor="type">System Type *</label>
+          <select
+            id="type"
+            name="type"
+            value={formData.type}
+            onChange={handleInputChange}
+            required
+            disabled={loading}
+          >
+            <option value="">Select system type</option>
+            <option value="parent_systems">Parent Systems</option>
+            <option value="systems">Systems</option>
+            <option value="subsystems">Subsystems</option>
+          </select>
+          <small className="form-help">
+            {formData.type === 'parent_systems' && 'Parent systems are containers for subsystems'}
+            {formData.type === 'systems' && 'Independent systems that can have builds'}
+            {formData.type === 'subsystems' && 'Systems that belong to a parent system'}
+          </small>
         </div>
+
+        {formData.type === 'subsystems' && (
+          <div className="form-group">
+            <label htmlFor="parent_id">Parent System *</label>
+            {parentId ? (
+              <input
+                type="text"
+                id="parent_id"
+                value={systems.find(s => s.id === parentId)?.name || 'Loading...'}
+                disabled
+                style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
+              />
+            ) : (
+              <select
+                id="parent_id"
+                name="parent_id"
+                value={formData.parent_id}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+              >
+                <option value="">Select parent system</option>
+                {getAvailableParents()
+                  .filter(system => !system.parent_id || system.type === 'parent_systems') // Only show parent systems
+                  .map(system => (
+                    <option key={system.id} value={system.id}>
+                      {system.name}
+                    </option>
+                  ))}
+              </select>
+            )}
+          </div>
+        )}
 
         <div className="form-actions">
           <button
