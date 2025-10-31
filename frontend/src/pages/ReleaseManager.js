@@ -11,6 +11,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [releaseTypeFilter, setReleaseTypeFilter] = useState('all'); // New filter state
   const [expandedReleases, setExpandedReleases] = useState({});
   const [releaseBuilds, setReleaseBuilds] = useState({});
 
@@ -88,6 +89,14 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
 
   // Filter and sort releases
   const filteredAndSortedReleases = releases
+    .filter(release => {
+      // Release type filter
+      if (releaseTypeFilter === 'all') {
+        return true; // Show all types
+      } else {
+        return release.type === releaseTypeFilter; // Show specific type
+      }
+    })
     .filter(release => 
       release.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       release.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -116,6 +125,18 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
   };
+
+  const getReleaseCounts = () => {
+    const counts = {
+      all: releases.length,
+      Major: releases.filter(r => r.type === 'Major').length,
+      Minor: releases.filter(r => r.type === 'Minor').length,
+      Patch: releases.filter(r => r.type === 'Patch').length
+    };
+    return counts;
+  };
+
+  const releaseCounts = getReleaseCounts();
 
   const getStatusBadge = (status) => {
     const statusClasses = {
@@ -154,7 +175,15 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   return (
     <div className="release-manager">
       <div className="release-manager-header">
-        <h1>Release Manager</h1>
+        <div className="header-left">
+          <h1>Release Manager</h1>
+          <div className="results-info">
+            {releaseTypeFilter === 'all' ? 
+              `Showing ${filteredAndSortedReleases.length} of ${releases.length} releases` :
+              `Showing ${filteredAndSortedReleases.length} ${releaseTypeFilter} ${filteredAndSortedReleases.length === 1 ? 'release' : 'releases'}`
+            }
+          </div>
+        </div>
         <button onClick={handleCreateRelease} className="create-release-btn">
           ➕ Create New Release
         </button>
@@ -169,6 +198,30 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
+        </div>
+
+        <div className="filter-controls">
+          <label htmlFor="release-type-filter" className="filter-label">Filter by Release Type:</label>
+          <select
+            id="release-type-filter"
+            value={releaseTypeFilter}
+            onChange={(e) => setReleaseTypeFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="all">All Releases ({releaseCounts.all})</option>
+            <option value="Major">Major ({releaseCounts.Major})</option>
+            <option value="Minor">Minor ({releaseCounts.Minor})</option>
+            <option value="Patch">Patch ({releaseCounts.Patch})</option>
+          </select>
+          {releaseTypeFilter !== 'all' && (
+            <button
+              onClick={() => setReleaseTypeFilter('all')}
+              className="clear-filter-btn"
+              title="Clear filter"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="sort-controls">
