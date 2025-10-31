@@ -201,7 +201,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
         </div>
 
         <div className="filter-controls">
-          <label htmlFor="release-type-filter" className="filter-label">Filter by Release Type:</label>
+          <label htmlFor="release-type-filter" className="filter-label">Filter by Type:</label>
           <select
             id="release-type-filter"
             value={releaseTypeFilter}
