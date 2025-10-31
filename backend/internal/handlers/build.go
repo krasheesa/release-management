@@ -53,6 +53,12 @@ func (h *BuildHandler) CreateBuild(c *gin.Context) {
 		return
 	}
 
+	// Validate that only subsystems and systems can have builds (not parent_systems)
+	if system.Type == models.SystemTypeParent {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create builds for parent_systems. Only systems and subsystems can have builds"})
+		return
+	}
+
 	// Only validate Release if ReleaseID is provided
 	if build.ReleaseID != nil && *build.ReleaseID != "" {
 		var release models.Release
@@ -94,6 +100,12 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 		var system models.System
 		if err := database.DB.First(&system, "id = ?", updates.SystemID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "System not found"})
+			return
+		}
+
+		// Validate that only subsystems and systems can have builds (not parent_systems)
+		if system.Type == models.SystemTypeParent {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot assign builds to parent_systems. Only systems and subsystems can have builds"})
 			return
 		}
 	}

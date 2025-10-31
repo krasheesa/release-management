@@ -46,17 +46,41 @@ func (h *SystemHandler) CreateSystem(c *gin.Context) {
 		return
 	}
 
-	// Validate 2-level hierarchy: if parent_id is provided, ensure the parent is a root system
+	// Validate type is provided
+	if system.Type == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Type is required"})
+		return
+	}
+
+	// Validate type value
+	if !system.Type.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type. Must be one of: parent_systems, systems, subsystems"})
+		return
+	}
+
+	// Validate type consistency with parent_id
 	if system.ParentID != nil && *system.ParentID != "" {
+		// If has parent, must be subsystem
+		if system.Type != models.SystemTypeSubsystem {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "System with parent must be of type 'subsystems'"})
+			return
+		}
+
 		var parent models.System
 		if err := database.DB.First(&parent, "id = ?", *system.ParentID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent system not found"})
 			return
 		}
 
-		// Check if the parent system already has a parent (is a subsystem)
-		if parent.ParentID != nil && *parent.ParentID != "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create subsystem under a subsystem. Only 2-level hierarchy is allowed (System -> Subsystem)"})
+		// Parent must be parent_systems type
+		if parent.Type != models.SystemTypeParent {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent system must be of type 'parent_systems'"})
+			return
+		}
+	} else {
+		// If no parent, cannot be subsystem
+		if system.Type == models.SystemTypeSubsystem {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Subsystem must have a parent system"})
 			return
 		}
 	}
@@ -85,17 +109,63 @@ func (h *SystemHandler) UpdateSystem(c *gin.Context) {
 		return
 	}
 
-	// Validate 2-level hierarchy: if parent_id is being updated, ensure the parent is a root system
+	// Validate type if provided
+	if updates.Type != "" && !updates.Type.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type. Must be one of: parent_systems, systems, subsystems"})
+		return
+	}
+
+	// Check if type can be changed
+	if updates.Type != "" && system.Type != updates.Type {
+		// Cannot change type if parent_systems has subsystems
+		if system.Type == models.SystemTypeParent {
+			var subsystemCount int64
+			database.DB.Model(&models.System{}).Where("parent_id = ?", id).Count(&subsystemCount)
+			if subsystemCount > 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot change type of parent_systems that has subsystems"})
+				return
+			}
+		}
+
+		// Cannot change type if systems has builds
+		if system.Type == models.SystemTypeSystem {
+			var buildCount int64
+			database.DB.Model(&models.Build{}).Where("system_id = ?", id).Count(&buildCount)
+			if buildCount > 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot change type of systems that has builds associated with it"})
+				return
+			}
+		}
+	}
+
+	// Use current type if not provided in updates
+	if updates.Type == "" {
+		updates.Type = system.Type
+	}
+
+	// Validate type consistency with parent_id
 	if updates.ParentID != nil && *updates.ParentID != "" {
+		// If has parent, must be subsystem
+		if updates.Type != models.SystemTypeSubsystem {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "System with parent must be of type 'subsystems'"})
+			return
+		}
+
 		var parent models.System
 		if err := database.DB.First(&parent, "id = ?", *updates.ParentID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent system not found"})
 			return
 		}
 
-		// Check if the parent system already has a parent (is a subsystem)
-		if parent.ParentID != nil && *parent.ParentID != "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot move system under a subsystem. Only 2-level hierarchy is allowed (System -> Subsystem)"})
+		// Parent must be parent_systems type
+		if parent.Type != models.SystemTypeParent {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Parent system must be of type 'parent_systems'"})
+			return
+		}
+	} else {
+		// If no parent, cannot be subsystem
+		if updates.Type == models.SystemTypeSubsystem {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Subsystem must have a parent system"})
 			return
 		}
 	}
@@ -105,7 +175,7 @@ func (h *SystemHandler) UpdateSystem(c *gin.Context) {
 		var subsystemCount int64
 		database.DB.Model(&models.System{}).Where("parent_id = ?", id).Count(&subsystemCount)
 		if subsystemCount > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot move a system with subsystems under another system. Only 2-level hierarchy is allowed"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot move a system with subsystems under another system"})
 			return
 		}
 	}

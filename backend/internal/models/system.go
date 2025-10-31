@@ -7,13 +7,30 @@ import (
 	"gorm.io/gorm"
 )
 
+type SystemType string
+
+const (
+	SystemTypeParent    SystemType = "parent_systems"
+	SystemTypeSystem    SystemType = "systems"
+	SystemTypeSubsystem SystemType = "subsystems"
+)
+
+func (st SystemType) IsValid() bool {
+	switch st {
+	case SystemTypeParent, SystemTypeSystem, SystemTypeSubsystem:
+		return true
+	}
+	return false
+}
+
 type System struct {
-	ID          string    `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Name        string    `json:"name" gorm:"not null"`
-	Description *string   `json:"description,omitempty"`
-	ParentID    *string   `json:"parent_id,omitempty" gorm:"type:varchar(36)"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string     `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	Name        string     `json:"name" gorm:"not null"`
+	Description *string    `json:"description,omitempty"`
+	ParentID    *string    `json:"parent_id,omitempty" gorm:"type:varchar(36)"`
+	Type        SystemType `json:"type" gorm:"type:varchar(20)"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 
 	// Relationships
 	Parent     *System  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
@@ -30,13 +47,30 @@ func (s *System) BeforeCreate(tx *gorm.DB) error {
 	}
 	s.UpdatedAt = time.Now()
 
-	// Validate 2-level hierarchy constraint
+	// Validate type
+	if !s.Type.IsValid() {
+		return gorm.ErrInvalidValue
+	}
+
+	// Validate type consistency with parent_id
 	if s.ParentID != nil && *s.ParentID != "" {
+		// If has parent, must be subsystem
+		if s.Type != SystemTypeSubsystem {
+			return gorm.ErrInvalidValue
+		}
+
 		var parent System
 		if err := tx.First(&parent, "id = ?", *s.ParentID).Error; err != nil {
 			return err
 		}
-		if parent.ParentID != nil && *parent.ParentID != "" {
+
+		// Parent must be parent_systems type
+		if parent.Type != SystemTypeParent {
+			return gorm.ErrInvalidValue
+		}
+	} else {
+		// If no parent, cannot be subsystem
+		if s.Type == SystemTypeSubsystem {
 			return gorm.ErrInvalidValue
 		}
 	}
@@ -47,13 +81,57 @@ func (s *System) BeforeCreate(tx *gorm.DB) error {
 func (s *System) BeforeUpdate(tx *gorm.DB) error {
 	s.UpdatedAt = time.Now()
 
-	// Validate 2-level hierarchy constraint
+	// Get current system state
+	var current System
+	if err := tx.First(&current, "id = ?", s.ID).Error; err != nil {
+		return err
+	}
+
+	// Validate type
+	if !s.Type.IsValid() {
+		return gorm.ErrInvalidValue
+	}
+
+	// Check if type can be changed
+	if current.Type != s.Type {
+		// Cannot change type if parent_systems has subsystems
+		if current.Type == SystemTypeParent {
+			var subsystemCount int64
+			tx.Model(&System{}).Where("parent_id = ?", s.ID).Count(&subsystemCount)
+			if subsystemCount > 0 {
+				return gorm.ErrInvalidValue
+			}
+		}
+
+		// Cannot change type if systems has builds
+		if current.Type == SystemTypeSystem {
+			var buildCount int64
+			tx.Model(&Build{}).Where("system_id = ?", s.ID).Count(&buildCount)
+			if buildCount > 0 {
+				return gorm.ErrInvalidValue
+			}
+		}
+	}
+
+	// Validate type consistency with parent_id
 	if s.ParentID != nil && *s.ParentID != "" {
+		// If has parent, must be subsystem
+		if s.Type != SystemTypeSubsystem {
+			return gorm.ErrInvalidValue
+		}
+
 		var parent System
 		if err := tx.First(&parent, "id = ?", *s.ParentID).Error; err != nil {
 			return err
 		}
-		if parent.ParentID != nil && *parent.ParentID != "" {
+
+		// Parent must be parent_systems type
+		if parent.Type != SystemTypeParent {
+			return gorm.ErrInvalidValue
+		}
+	} else {
+		// If no parent, cannot be subsystem
+		if s.Type == SystemTypeSubsystem {
 			return gorm.ErrInvalidValue
 		}
 	}
