@@ -565,3 +565,32 @@
 .clear-filter-btn:hover {
   background: #e9ecef;
 }
+
+/* Clickable System and Release Name Styling */
+.system-name-link,
+.release-name-link {
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: normal;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-align: left;
+}
+
+.system-name-link:hover,
+.release-name-link:hover {
+  background-color: #e3f2fd;
+  color: #007bff;
+  transform: translateX(2px);
+}
+
+.no-release {
+  color: #6c757d;
+  font-style: italic;
+}

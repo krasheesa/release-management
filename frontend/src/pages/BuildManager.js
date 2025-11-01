@@ -86,10 +86,30 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
     if (window.confirm('Are you sure you want to delete this build?')) {
       try {
         await buildService.deleteBuild(buildId);
-        loadData(); // Reload data
+        loadData(); // Reload builds after deletion
       } catch (err) {
-        alert('Failed to delete build: ' + err.message);
+        setError('Failed to delete build: ' + err.message);
       }
+    }
+  };
+
+  // Handle system click to navigate to system detail page
+  const handleSystemClick = (systemId, e) => {
+    e.stopPropagation();
+    if (systemId && embedded && onNavigateToDetail) {
+      navigate(`/systems/${systemId}`);
+    } else if (systemId) {
+      navigate(`/systems/${systemId}`);
+    }
+  };
+
+  // Handle release click to navigate to release detail page
+  const handleReleaseClick = (releaseId, e) => {
+    e.stopPropagation();
+    if (releaseId && embedded && onNavigateToDetail) {
+      navigate(`/releases/${releaseId}`);
+    } else if (releaseId) {
+      navigate(`/releases/${releaseId}`);
     }
   };
 
@@ -405,13 +425,33 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
               {filteredAndSortedBuilds.map(build => (
                 <tr key={build.id} className="build-row">
                   <td className="system-cell">
-                    {getSystemName(build.system_id)}
+                    {build.system_id ? (
+                      <button
+                        className="system-name-link"
+                        onClick={(e) => handleSystemClick(build.system_id, e)}
+                        title={`View system details for ${getSystemName(build.system_id)}`}
+                      >
+                        {getSystemName(build.system_id)}
+                      </button>
+                    ) : (
+                      getSystemName(build.system_id)
+                    )}
                   </td>
                   <td className="version-cell">
                     <span className="version-badge">{build.version}</span>
                   </td>
                   <td className="release-cell">
-                    {getReleaseName(build.release_id)}
+                    {build.release_id ? (
+                      <button
+                        className="release-name-link"
+                        onClick={(e) => handleReleaseClick(build.release_id, e)}
+                        title={`View release details for ${getReleaseName(build.release_id)}`}
+                      >
+                        {getReleaseName(build.release_id)}
+                      </button>
+                    ) : (
+                      <span className="no-release">No Release</span>
+                    )}
                   </td>
                   <td className="date-cell">
                     {formatDate(build.build_date)}
