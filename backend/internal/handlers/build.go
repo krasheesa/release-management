@@ -114,7 +114,7 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 
 	// Preserve ID, SystemID and timestamps
 	updates.ID = build.ID
-	updates.SystemID = build.SystemID  // Ensure system_id cannot be changed
+	updates.SystemID = build.SystemID // Ensure system_id cannot be changed
 	updates.CreatedAt = build.CreatedAt
 
 	if err := database.DB.Save(&updates).Error; err != nil {
