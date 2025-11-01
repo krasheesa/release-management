@@ -81,6 +81,27 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
     }));
   };
 
+  const validateDuplicateSystem = async (systemId, releaseId, excludeBuildId = null) => {
+    if (!releaseId) return true; // No release selected, no conflict possible
+    
+    try {
+      const releaseBuilds = await releaseService.getReleaseBuilds(releaseId);
+      const existingBuild = releaseBuilds.find(build => 
+        build.system_id === systemId && build.id !== excludeBuildId
+      );
+      
+      if (existingBuild) {
+        const systemName = getSystemName(systemId);
+        const releaseName = getReleaseName(releaseId);
+        throw new Error(`A build for system "${systemName}" already exists in release "${releaseName}". Each release can only have one build per system.`);
+      }
+      
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -104,6 +125,15 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
     setError(null);
 
     try {
+      // Validate for duplicate systems in release (frontend validation)
+      if (formData.release_id) {
+        await validateDuplicateSystem(
+          formData.system_id, 
+          formData.release_id, 
+          isEditing ? currentBuildId : null
+        );
+      }
+
       const buildData = {
         ...formData,
         build_date: `${formData.build_date}T00:00:00Z`,
@@ -125,7 +155,9 @@ const BuildForm = ({ buildId, embedded = false, onBack }) => {
         navigate('/build-manager');
       }
     } catch (err) {
-      const errorMessage = 'Failed to save build: ' + err.message;
+      const errorMessage = err.message.includes('already exists') 
+        ? err.message 
+        : 'Failed to save build: ' + err.message;
       setError(errorMessage);
       showError(errorMessage);
     } finally {

@@ -121,6 +121,17 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
       // First get the complete build data
       const build = await buildService.getBuild(buildId);
       
+      // Check if this system already has a build in this release
+      const existingBuild = releaseBuilds.find(releaseBuild => 
+        releaseBuild.system_id === build.system_id
+      );
+      
+      if (existingBuild) {
+        const systemName = build.system?.name || 'Unknown System';
+        showError(`A build for system "${systemName}" already exists in this release. Each release can only have one build per system.`);
+        return;
+      }
+      
       // Update the build with all required fields plus the new release_id
       await buildService.updateBuild(buildId, {
         system_id: build.system_id,
@@ -133,8 +144,12 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
       await loadReleaseData();
       await loadAvailableBuilds();
       setShowBuildSelector(false);
+      showSuccess('Build successfully added to release!');
     } catch (err) {
-      alert('Failed to add build to release: ' + err.message);
+      const errorMessage = err.message.includes('already exists') 
+        ? err.message 
+        : 'Failed to add build to release: ' + err.message;
+      showError(errorMessage);
     }
   };
 
@@ -154,8 +169,9 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
       // Reload builds data
       await loadReleaseData();
       await loadAvailableBuilds();
+      showSuccess('Build successfully removed from release!');
     } catch (err) {
-      alert('Failed to remove build from release: ' + err.message);
+      showError('Failed to remove build from release: ' + err.message);
     }
   };
 
