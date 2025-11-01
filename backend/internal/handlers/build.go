@@ -66,6 +66,13 @@ func (h *BuildHandler) CreateBuild(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
 			return
 		}
+
+		// Check for duplicate system in the same release
+		var existingBuild models.Build
+		if err := database.DB.Where("release_id = ? AND system_id = ?", *build.ReleaseID, build.SystemID).First(&existingBuild).Error; err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "A build for this system already exists in this release. Each release can only have one build per system"})
+			return
+		}
 	}
 
 	if err := database.DB.Create(&build).Error; err != nil {
@@ -107,6 +114,13 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 			var release models.Release
 			if err := database.DB.First(&release, "id = ?", *updates.ReleaseID).Error; err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
+				return
+			}
+
+			// Check for duplicate system in the target release (excluding current build)
+			var existingBuild models.Build
+			if err := database.DB.Where("release_id = ? AND system_id = ? AND id != ?", *updates.ReleaseID, build.SystemID, build.ID).First(&existingBuild).Error; err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "A build for this system already exists in the target release. Each release can only have one build per system"})
 				return
 			}
 		}
