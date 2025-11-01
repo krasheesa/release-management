@@ -84,6 +84,17 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
     localStorage.setItem('releaseManager_typeFilter', newFilter);
   };
 
+  // Handle build click to navigate to build edit page
+  const handleBuildClick = (buildId, e) => {
+    e.stopPropagation(); // Prevent triggering release expansion/collapse
+    if (embedded && onNavigateToDetail) {
+      // If embedded, we need to navigate to build manager or handle differently
+      navigate(`/builds/${buildId}/edit`);
+    } else {
+      navigate(`/builds/${buildId}/edit`);
+    }
+  };
+
   const handleDeleteRelease = async (releaseId, e) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this release?')) {
@@ -323,7 +334,13 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
                             {releaseBuilds[release.id].map(build => (
                               <tr key={build.id} className="build-row">
                                 <td className="service-name-cell">
-                                  {build.system?.name || 'Unknown System'}
+                                  <button
+                                    className="build-name-link"
+                                    onClick={(e) => handleBuildClick(build.id, e)}
+                                    title={`Edit build ${build.version} for ${build.system?.name || 'Unknown System'}`}
+                                  >
+                                    {build.system?.name || 'Unknown System'}
+                                  </button>
                                 </td>
                                 <td className="version-cell">
                                   <span className="version-badge">v{build.version}</span>
