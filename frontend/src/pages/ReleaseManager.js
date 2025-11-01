@@ -9,8 +9,13 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  // Load sorting from localStorage or default values
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem('releaseManager_sortBy') || 'name';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    return localStorage.getItem('releaseManager_sortOrder') || 'asc';
+  });
   // Load filter from localStorage or default to 'all'
   const [releaseTypeFilter, setReleaseTypeFilter] = useState(() => {
     return localStorage.getItem('releaseManager_typeFilter') || 'all';
@@ -247,7 +252,10 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
         <div className="sort-controls">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              localStorage.setItem('releaseManager_sortBy', e.target.value);
+            }}
             className="sort-select"
           >
             <option value="name">Sort by Name</option>
@@ -256,7 +264,11 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
             <option value="status">Sort by Status</option>
           </select>
           <button
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            onClick={() => {
+              const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+              setSortOrder(newOrder);
+              localStorage.setItem('releaseManager_sortOrder', newOrder);
+            }}
             className="sort-order-btn"
           >
             {sortOrder === 'asc' ? '⬆️' : '⬇️'}

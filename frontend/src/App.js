@@ -215,10 +215,10 @@ function App() {
             } 
           />
           <Route 
-            path="/booking-request" 
+            path="/maintenance-request" 
             element={
               <ProtectedRoute>
-                <Home activeContent="booking-request" />
+                <Home activeContent="maintenance-request" />
               </ProtectedRoute>
             } 
           />

@@ -9,8 +9,13 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  // Load sorting from localStorage or default values
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem('systemManager_sortBy') || 'name';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    return localStorage.getItem('systemManager_sortOrder') || 'asc';
+  });
   // Load filter from localStorage or default to 'root'
   const [typeFilter, setTypeFilter] = useState(() => {
     return localStorage.getItem('systemManager_typeFilter') || 'root';
@@ -83,6 +88,15 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   const handleTypeFilterChange = (newFilter) => {
     setTypeFilter(newFilter);
     localStorage.setItem('systemManager_typeFilter', newFilter);
+  };
+
+  // Handle sort change and save to localStorage
+  const handleSortChange = (newSortBy) => {
+    const newSortOrder = sortBy === newSortBy && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder);
+    localStorage.setItem('systemManager_sortBy', newSortBy);
+    localStorage.setItem('systemManager_sortOrder', newSortOrder);
   };
 
   const handleDeleteSystem = async (systemId, e) => {
@@ -249,14 +263,21 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
         <div className="sort-controls">
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              localStorage.setItem('systemManager_sortBy', e.target.value);
+            }}
             className="sort-select"
           >
             <option value="name">Sort by Name</option>
             <option value="created_at">Sort by Created Date</option>
           </select>
           <button
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            onClick={() => {
+              const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+              setSortOrder(newOrder);
+              localStorage.setItem('systemManager_sortOrder', newOrder);
+            }}
             className="sort-order-btn"
           >
             {sortOrder === 'asc' ? '⬆️' : '⬇️'}

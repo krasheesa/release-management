@@ -11,8 +11,13 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('build_date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  // Load sorting from localStorage or default values
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem('buildManager_sortBy') || 'build_date';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    return localStorage.getItem('buildManager_sortOrder') || 'desc';
+  });
   const [columnFilters, setColumnFilters] = useState({
     system: '',
     release: ''
@@ -115,10 +120,14 @@ const BuildManager = ({ embedded = false, onNavigateToDetail }) => {
 
   const handleSort = (field) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(newOrder);
+      localStorage.setItem('buildManager_sortOrder', newOrder);
     } else {
       setSortBy(field);
       setSortOrder('asc');
+      localStorage.setItem('buildManager_sortBy', field);
+      localStorage.setItem('buildManager_sortOrder', 'asc');
     }
   };
 
