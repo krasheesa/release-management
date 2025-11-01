@@ -95,19 +95,10 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 		return
 	}
 
-	// Validate that System and Release exist if they're being updated
+	// Prevent system_id changes - builds cannot be moved between systems
 	if updates.SystemID != "" && updates.SystemID != build.SystemID {
-		var system models.System
-		if err := database.DB.First(&system, "id = ?", updates.SystemID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "System not found"})
-			return
-		}
-
-		// Validate that only subsystems and systems can have builds (not parent_systems)
-		if system.Type == models.SystemTypeParent {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot assign builds to parent_systems. Only systems and subsystems can have builds"})
-			return
-		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot change system_id of existing build. System ID is immutable after creation"})
+		return
 	}
 
 	if updates.ReleaseID != nil && *updates.ReleaseID != "" {
@@ -121,8 +112,9 @@ func (h *BuildHandler) UpdateBuild(c *gin.Context) {
 		}
 	}
 
-	// Preserve ID and timestamps
+	// Preserve ID, SystemID and timestamps
 	updates.ID = build.ID
+	updates.SystemID = build.SystemID  // Ensure system_id cannot be changed
 	updates.CreatedAt = build.CreatedAt
 
 	if err := database.DB.Save(&updates).Error; err != nil {
