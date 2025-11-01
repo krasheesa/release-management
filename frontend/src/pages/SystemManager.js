@@ -11,7 +11,10 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [typeFilter, setTypeFilter] = useState('root'); // Default to root systems only
+  // Load filter from localStorage or default to 'root'
+  const [typeFilter, setTypeFilter] = useState(() => {
+    return localStorage.getItem('systemManager_typeFilter') || 'root';
+  });
   const [expandedSystems, setExpandedSystems] = useState({});
   const [systemSubsystems, setSystemSubsystems] = useState({});
 
@@ -74,6 +77,12 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
     } else {
       navigate('/systems/new');
     }
+  };
+
+  // Handle filter change and save to localStorage
+  const handleTypeFilterChange = (newFilter) => {
+    setTypeFilter(newFilter);
+    localStorage.setItem('systemManager_typeFilter', newFilter);
   };
 
   const handleDeleteSystem = async (systemId, e) => {
@@ -217,7 +226,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                     <select
             id="type-filter"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e) => handleTypeFilterChange(e.target.value)}
             className="filter-select"
           >
             <option value="root">Default ({systemCounts.root})</option>
@@ -228,7 +237,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
           </select>
           {typeFilter !== 'root' && (
             <button
-              onClick={() => setTypeFilter('root')}
+              onClick={() => handleTypeFilterChange('root')}
               className="clear-filter-btn"
               title="Reset to default filter"
             >

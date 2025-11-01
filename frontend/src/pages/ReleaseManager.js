@@ -11,7 +11,10 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [releaseTypeFilter, setReleaseTypeFilter] = useState('all'); // New filter state
+  // Load filter from localStorage or default to 'all'
+  const [releaseTypeFilter, setReleaseTypeFilter] = useState(() => {
+    return localStorage.getItem('releaseManager_typeFilter') || 'all';
+  });
   const [expandedReleases, setExpandedReleases] = useState({});
   const [releaseBuilds, setReleaseBuilds] = useState({});
 
@@ -73,6 +76,12 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
     } else {
       navigate('/releases/new');
     }
+  };
+
+  // Handle filter change and save to localStorage
+  const handleReleaseTypeFilterChange = (newFilter) => {
+    setReleaseTypeFilter(newFilter);
+    localStorage.setItem('releaseManager_typeFilter', newFilter);
   };
 
   const handleDeleteRelease = async (releaseId, e) => {
@@ -205,7 +214,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
           <select
             id="release-type-filter"
             value={releaseTypeFilter}
-            onChange={(e) => setReleaseTypeFilter(e.target.value)}
+            onChange={(e) => handleReleaseTypeFilterChange(e.target.value)}
             className="filter-select"
           >
             <option value="all">All Releases ({releaseCounts.all})</option>
@@ -215,7 +224,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
           </select>
           {releaseTypeFilter !== 'all' && (
             <button
-              onClick={() => setReleaseTypeFilter('all')}
+              onClick={() => handleReleaseTypeFilterChange('all')}
               className="clear-filter-btn"
               title="Clear filter"
             >
