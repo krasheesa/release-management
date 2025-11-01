@@ -197,7 +197,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
           </div>
         </div>
         <button onClick={handleCreateSystem} className="create-system-btn">
-          ➕ Create New System
+          + Create New System
         </button>
       </div>
 

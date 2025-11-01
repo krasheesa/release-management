@@ -409,7 +409,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
           <div className="subsystems-header">
             <h2>Subsystems ({subsystems.length})</h2>
             <button onClick={handleCreateSubsystem} className="create-subsystem-btn">
-              ➕ Create Subsystem
+              + Create Subsystem
             </button>
           </div>
 

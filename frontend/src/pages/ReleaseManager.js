@@ -185,7 +185,7 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
           </div>
         </div>
         <button onClick={handleCreateRelease} className="create-release-btn">
-          ➕ Create New Release
+          + Create New Release
         </button>
       </div>
 

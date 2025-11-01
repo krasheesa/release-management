@@ -324,7 +324,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
                 className="add-build-btn"
                 disabled={unassociatedBuilds.length === 0}
               >
-                ➕ Add Build
+                + Add Build
               </button>
             </div>
 
