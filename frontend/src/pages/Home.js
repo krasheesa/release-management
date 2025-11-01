@@ -108,7 +108,7 @@ const Home = ({ activeContent: propActiveContent }) => {
       'build-manager': '/build-manager',
       'system-manager': '/systems',
       'environment-manager': '/environment-manager',
-      'booking-request': '/booking-request',
+      'maintenance-request': '/maintenance-request',
       'change-request': '/change-request',
       'deployment-manager': '/deployment-manager'
     };
@@ -193,8 +193,8 @@ const Home = ({ activeContent: propActiveContent }) => {
       title: 'Request',
       icon: '📝',
       items: [
-        { key: 'booking-request', title: 'Booking Request' },
-        { key: 'change-request', title: 'Change Request' }
+        { key: 'change-request', title: 'Change Request' },
+        { key: 'maintenance-request', title: 'Maintenance Request' }
       ]
     },
     {
@@ -282,11 +282,11 @@ const Home = ({ activeContent: propActiveContent }) => {
           </div>
         );
       
-      case 'booking-request':
+      case 'maintenance-request':
         return (
           <div className="content-placeholder">
-            <h2>Booking Request</h2>
-            <p>Create and manage booking requests here.</p>
+            <h2>Maintenance Request</h2>
+            <p>Create and manage maintenance requests here.</p>
             <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
               Feature are still WIP. Soon to come!
             </div>
