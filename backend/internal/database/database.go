@@ -47,6 +47,11 @@ func Connect(cfg *config.Config) error {
 		return fmt.Errorf("failed to migrate system types: %w", err)
 	}
 
+	// Migrate environment status for existing data
+	if err := migrateEnvironmentStatus(); err != nil {
+		return fmt.Errorf("failed to migrate environment status: %w", err)
+	}
+
 	// Seed admin user if it doesn't exist
 	if err := seedAdminUser(cfg); err != nil {
 		return fmt.Errorf("failed to seed admin user: %w", err)
@@ -158,5 +163,38 @@ func migrateSystemTypes() error {
 	}
 
 	log.Println("System types migration fully completed")
+	return nil
+}
+
+func migrateEnvironmentStatus() error {
+	// Check if the migration has already been completed by checking for NOT NULL constraint
+	var result int
+	if err := DB.Raw("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'environments' AND column_name = 'status' AND is_nullable = 'NO'").Scan(&result).Error; err == nil && result > 0 {
+		log.Println("Environment status migration already completed, skipping")
+		return nil
+	}
+
+	log.Println("Starting environment status migration...")
+
+	// Update all existing environments that have null status to 'active'
+	var updatedCount int64
+	if err := DB.Exec("UPDATE environments SET status = ? WHERE status IS NULL OR status = ''", models.EnvStatusActive).Error; err != nil {
+		log.Printf("Failed to update environment status: %v", err)
+		return err
+	}
+
+	// Get the number of updated records
+	DB.Model(&models.Environment{}).Where("status = ?", models.EnvStatusActive).Count(&updatedCount)
+
+	log.Printf("Environment status migration completed for %d environments", updatedCount)
+
+	// Now add the NOT NULL constraint
+	log.Println("Adding NOT NULL constraint to status column...")
+	if err := DB.Exec("ALTER TABLE environments ALTER COLUMN status SET NOT NULL").Error; err != nil {
+		log.Printf("Failed to add NOT NULL constraint: %v", err)
+		return err
+	}
+
+	log.Println("Environment status migration fully completed")
 	return nil
 }

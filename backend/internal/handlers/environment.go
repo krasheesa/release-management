@@ -15,6 +15,16 @@ func NewEnvironmentHandler() *EnvironmentHandler {
 	return &EnvironmentHandler{}
 }
 
+// Helper function to validate environment status
+func isValidEnvironmentStatus(status models.EnvironmentStatus) bool {
+	switch status {
+	case models.EnvStatusActive, models.EnvStatusDecommissioned, models.EnvStatusMaintenance, models.EnvStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // GET /environments
 func (h *EnvironmentHandler) GetEnvironments(c *gin.Context) {
 	var environments []models.Environment
@@ -43,6 +53,12 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	var environment models.Environment
 	if err := c.ShouldBindJSON(&environment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate status
+	if !isValidEnvironmentStatus(environment.Status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid environment status. Valid values are: active, decommissioned, maintenance, pending"})
 		return
 	}
 
@@ -77,6 +93,12 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	var updates models.Environment
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate status if provided
+	if updates.Status != "" && !isValidEnvironmentStatus(updates.Status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid environment status. Valid values are: active, decommissioned, maintenance, pending"})
 		return
 	}
 
