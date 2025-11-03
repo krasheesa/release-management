@@ -28,7 +28,7 @@ func isValidEnvironmentStatus(status models.EnvironmentStatus) bool {
 // GET /environments
 func (h *EnvironmentHandler) GetEnvironments(c *gin.Context) {
 	var environments []models.Environment
-	if err := database.DB.Preload("Release").Find(&environments).Error; err != nil {
+	if err := database.DB.Find(&environments).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environments"})
 		return
 	}
@@ -40,7 +40,7 @@ func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	id := c.Param("id")
 	var environment models.Environment
 
-	if err := database.DB.Preload("Release").First(&environment, "id = ?", id).Error; err != nil {
+	if err := database.DB.First(&environment, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
 		return
 	}
@@ -69,13 +69,22 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		return
 	}
 
+	// Validate that EnvironmentGroup exists if provided
+	if environment.EnvironmentGroupID != nil && *environment.EnvironmentGroupID != "" {
+		var envGroup models.EnvironmentGroup
+		if err := database.DB.First(&envGroup, "id = ?", *environment.EnvironmentGroupID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Environment Group not found"})
+			return
+		}
+	}
+
 	if err := database.DB.Create(&environment).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create environment"})
 		return
 	}
 
-	// Load relationships for response
-	database.DB.Preload("Release").First(&environment, "id = ?", environment.ID)
+	// Load the created environment for response
+	database.DB.First(&environment, "id = ?", environment.ID)
 
 	c.JSON(http.StatusCreated, environment)
 }
@@ -111,6 +120,18 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		}
 	}
 
+	// Validate that EnvironmentGroup exists if it's being updated
+	if updates.EnvironmentGroupID != nil && *updates.EnvironmentGroupID != "" {
+		// Check if EnvironmentGroupID is actually changing
+		if environment.EnvironmentGroupID == nil || *updates.EnvironmentGroupID != *environment.EnvironmentGroupID {
+			var envGroup models.EnvironmentGroup
+			if err := database.DB.First(&envGroup, "id = ?", *updates.EnvironmentGroupID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Environment Group not found"})
+				return
+			}
+		}
+	}
+
 	// Preserve ID and timestamps
 	updates.ID = environment.ID
 	updates.CreatedAt = environment.CreatedAt
@@ -120,8 +141,8 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
-	// Load relationships for response
-	database.DB.Preload("Release").First(&updates, "id = ?", updates.ID)
+	// Load the updated environment for response
+	database.DB.First(&updates, "id = ?", updates.ID)
 
 	c.JSON(http.StatusOK, updates)
 }

@@ -36,6 +36,7 @@ func Connect(cfg *config.Config) error {
 		&models.Release{},
 		&models.System{},
 		&models.Build{},
+		&models.EnvironmentGroup{},
 		&models.Environment{},
 		&models.EnvironmentSystem{},
 	); err != nil {
@@ -50,6 +51,11 @@ func Connect(cfg *config.Config) error {
 	// Migrate environment status for existing data
 	if err := migrateEnvironmentStatus(); err != nil {
 		return fmt.Errorf("failed to migrate environment status: %w", err)
+	}
+
+	// Migrate environment groups for existing data
+	if err := migrateEnvironmentGroups(); err != nil {
+		return fmt.Errorf("failed to migrate environment groups: %w", err)
 	}
 
 	// Seed admin user if it doesn't exist
@@ -196,5 +202,53 @@ func migrateEnvironmentStatus() error {
 	}
 
 	log.Println("Environment status migration fully completed")
+	return nil
+}
+
+func migrateEnvironmentGroups() error {
+	log.Println("Starting environment groups migration...")
+
+	// Create a default environment group if none exists
+	var groupCount int64
+	DB.Model(&models.EnvironmentGroup{}).Count(&groupCount)
+
+	var defaultGroupID string
+	if groupCount == 0 {
+		log.Println("Creating default environment group...")
+		defaultGroup := models.EnvironmentGroup{
+			Name:        "Default Environment Group",
+			Description: &[]string{"Default group for existing environments"}[0],
+		}
+
+		if err := DB.Create(&defaultGroup).Error; err != nil {
+			log.Printf("Failed to create default environment group: %v", err)
+			return err
+		}
+
+		defaultGroupID = defaultGroup.ID
+		log.Printf("Created default environment group with ID: %s", defaultGroupID)
+	} else {
+		// Get the first available environment group
+		var firstGroup models.EnvironmentGroup
+		if err := DB.First(&firstGroup).Error; err != nil {
+			log.Printf("Failed to get existing environment group: %v", err)
+			return err
+		}
+		defaultGroupID = firstGroup.ID
+		log.Printf("Using existing environment group: %s", defaultGroupID)
+	}
+
+	// Update all environments that don't have an environment group assigned
+	var updatedCount int64
+	if err := DB.Exec("UPDATE environments SET environment_group_id = ? WHERE environment_group_id IS NULL", defaultGroupID).Error; err != nil {
+		log.Printf("Failed to update environment group assignments: %v", err)
+		return err
+	}
+
+	// Get the number of updated records
+	DB.Model(&models.Environment{}).Where("environment_group_id = ?", defaultGroupID).Count(&updatedCount)
+
+	log.Printf("Environment groups migration completed for %d environments", updatedCount)
+	log.Println("Environment groups migration fully completed")
 	return nil
 }

@@ -20,6 +20,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 	systemHandler := handlers.NewSystemHandler()
 	buildHandler := handlers.NewBuildHandler()
 	environmentHandler := handlers.NewEnvironmentHandler()
+	environmentGroupsHandler := handlers.NewEnvironmentGroupHandler()
 
 	// Public routes
 	auth := r.Group("/api/auth")
@@ -88,6 +89,16 @@ func Setup(cfg *config.Config) *gin.Engine {
 			environments.PUT("/:id/systems/:systemId", handlers.UpdateEnvironmentSystem)
 			environments.DELETE("/:id/systems/:systemId", handlers.RemoveSystemFromEnvironment)
 			environments.POST("/:id/systems/sync", handlers.SyncEnvironmentSystemVersions)
+		}
+
+		// Environment Group endpoints
+		environmentGroups := protected.Group("/environment-groups")
+		{
+			environmentGroups.GET("", environmentGroupsHandler.GetEnvironmentGroups)
+			environmentGroups.GET("/:id", environmentGroupsHandler.GetEnvironmentGroup)
+			environmentGroups.POST("", environmentGroupsHandler.CreateEnvironmentGroup)
+			environmentGroups.PUT("/:id", environmentGroupsHandler.UpdateEnvironmentGroup)
+			environmentGroups.DELETE("/:id", environmentGroupsHandler.DeleteEnvironmentGroup)
 		}
 	}
 

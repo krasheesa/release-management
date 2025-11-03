@@ -24,18 +24,18 @@ const (
 )
 
 type Environment struct {
-	ID          string            `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Name        string            `json:"name" gorm:"not null"`
-	Type        EnvironmentType   `json:"type" gorm:"type:varchar(20);not null"`
-	Status      EnvironmentStatus `json:"status" gorm:"type:varchar(20);default:'active'"`
-	URL         *string           `json:"url,omitempty"`
-	Description *string           `json:"description,omitempty"`
-	ReleaseID   string            `json:"release_id" gorm:"type:varchar(36);not null"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID                 string            `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	Name               string            `json:"name" gorm:"not null"`
+	Type               EnvironmentType   `json:"type" gorm:"type:varchar(20);not null"`
+	Status             EnvironmentStatus `json:"status" gorm:"type:varchar(20);default:'active'"`
+	URL                *string           `json:"url,omitempty"`
+	Description        *string           `json:"description,omitempty"`
+	ReleaseID          string            `json:"release_id" gorm:"type:varchar(36);not null"`
+	EnvironmentGroupID *string           `json:"environment_group_id,omitempty" gorm:"type:varchar(36)"`
+	CreatedAt          time.Time         `json:"created_at"`
+	UpdatedAt          time.Time         `json:"updated_at"`
 
 	// Relationships
-	Release            Release             `json:"release,omitempty" gorm:"foreignKey:ReleaseID"`
 	EnvironmentSystems []EnvironmentSystem `json:"environment_systems,omitempty" gorm:"foreignKey:EnvironmentID"`
 }
 

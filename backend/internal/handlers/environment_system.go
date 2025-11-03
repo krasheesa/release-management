@@ -104,12 +104,24 @@ func AddSystemToEnvironment(c *gin.Context) {
 
 	// Check if environment exists
 	var environment models.Environment
-	if err := database.DB.Preload("Release.Builds").First(&environment, "id = ?", envID).Error; err != nil {
+	if err := database.DB.First(&environment, "id = ?", envID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment"})
+		return
+	}
+
+	// Get the release and its builds separately
+	var release models.Release
+	var builds []models.Build
+	if err := database.DB.First(&release, "id = ?", environment.ReleaseID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment's release"})
+		return
+	}
+	if err := database.DB.Where("release_id = ?", release.ID).Find(&builds).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch release builds"})
 		return
 	}
 
@@ -155,7 +167,7 @@ func AddSystemToEnvironment(c *gin.Context) {
 		// Determine version from release builds
 		version := req.Version
 		if version == "" {
-			version = getSystemVersionFromRelease(environment.Release.Builds, sys.ID)
+			version = getSystemVersionFromRelease(builds, sys.ID)
 		} else {
 			// Validate version against available builds
 			isValid, err := isValidVersionForSystem(sys.ID, version)
@@ -326,12 +338,24 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 
 	// Check if environment exists
 	var environment models.Environment
-	if err := database.DB.Preload("Release.Builds").First(&environment, "id = ?", envID).Error; err != nil {
+	if err := database.DB.First(&environment, "id = ?", envID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment"})
+		return
+	}
+
+	// Get the release and its builds separately
+	var release models.Release
+	var builds []models.Build
+	if err := database.DB.First(&release, "id = ?", environment.ReleaseID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment's release"})
+		return
+	}
+	if err := database.DB.Where("release_id = ?", release.ID).Find(&builds).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch release builds"})
 		return
 	}
 
@@ -345,7 +369,7 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 	// Update versions
 	var updated []models.EnvironmentSystem
 	for _, envSystem := range envSystems {
-		newVersion := getSystemVersionFromRelease(environment.Release.Builds, envSystem.SystemID)
+		newVersion := getSystemVersionFromRelease(builds, envSystem.SystemID)
 		if newVersion != envSystem.Version {
 			envSystem.Version = newVersion
 			if err := database.DB.Save(&envSystem).Error; err != nil {
