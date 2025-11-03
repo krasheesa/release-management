@@ -47,9 +47,21 @@ const AuthProvider = ({ children }) => {
         setUser(userData);
       })
       .catch(() => {
+        // Clear authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('lastVisitedPath');
         localStorage.removeItem('welcomeShown');
+        
+        // Clear user preferences (filters and sorting)
+        localStorage.removeItem('systemManager_typeFilter');
+        localStorage.removeItem('systemManager_sortBy');
+        localStorage.removeItem('systemManager_sortOrder');
+        localStorage.removeItem('releaseManager_typeFilter');
+        localStorage.removeItem('releaseManager_sortBy');
+        localStorage.removeItem('releaseManager_sortOrder');
+        localStorage.removeItem('buildManager_sortBy');
+        localStorage.removeItem('buildManager_sortOrder');
+        
         setToken(null);
       })
       .finally(() => {
@@ -70,9 +82,21 @@ const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear authentication data
     localStorage.removeItem('token');
     localStorage.removeItem('lastVisitedPath');
     localStorage.removeItem('welcomeShown');
+    
+    // Clear user preferences (filters and sorting)
+    localStorage.removeItem('systemManager_typeFilter');
+    localStorage.removeItem('systemManager_sortBy');
+    localStorage.removeItem('systemManager_sortOrder');
+    localStorage.removeItem('releaseManager_typeFilter');
+    localStorage.removeItem('releaseManager_sortBy');
+    localStorage.removeItem('releaseManager_sortOrder');
+    localStorage.removeItem('buildManager_sortBy');
+    localStorage.removeItem('buildManager_sortOrder');
+    
     setToken(null);
     setUser(null);
     setJustLoggedIn(false);
