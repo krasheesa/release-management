@@ -228,3 +228,23 @@ export const environmentService = {
     return handleResponse(response);
   }
 };
+
+// Environment Group API functions
+export const environmentGroupsService = {
+  getEnvironmentGroups: async () => {
+    const response = await fetch(`${API_BASE_URL}/environment-groups`, {
+      headers: getAuthHeaders(),
+      method: 'GET'
+    });
+    return handleResponse(response);
+  },
+
+  getSpecificEnvironmentGroup: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/environment-groups/${id}`, {
+      headers: getAuthHeaders(),
+      method: 'GET'
+    });
+    return handleResponse(response);
+  }
+
+}
