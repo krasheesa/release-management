@@ -104,6 +104,7 @@ const Home = ({ activeContent: propActiveContent }) => {
 
   const handleMenuItemClick = (itemKey) => {
     const routeMap = {
+      'home': '/dashboard',
       'release-manager': '/release-manager',
       'build-manager': '/build-manager',
       'system-manager': '/systems',
@@ -169,40 +170,31 @@ const Home = ({ activeContent: propActiveContent }) => {
     navigate('/build-manager');
   };
 
-  const menuItems = [
+  const menuSections = [
     {
-      key: 'release',
-      title: 'Release',
-      icon: '📋',
+      title: 'Discover',
       items: [
-        { key: 'release-manager', title: 'Manager' },
-        { key: 'build-manager', title: 'Build' },
-        { key: 'system-manager', title: 'Systems' }
+        { key: 'home', title: 'Home' }
       ]
     },
     {
-      key: 'environment',
-      title: 'Environment',
-      icon: '🌐',
+      title: 'Service',
       items: [
-        { key: 'environment-manager', title: 'Manager' }
-      ]
-    },
-    {
-      key: 'request',
-      title: 'Request',
-      icon: '📝',
-      items: [
-        { key: 'change-request', title: 'Change Request' },
-        { key: 'maintenance-request', title: 'Maintenance Request' }
-      ]
-    },
-    {
-      key: 'deployment',
-      title: 'Deployment',
-      icon: '🚀',
-      items: [
-        { key: 'deployment-manager', title: 'Manager' }
+        { key: 'release', title: 'Release', hasSubitems: true, subitems: [
+          { key: 'release-manager', title: 'Manager' },
+          { key: 'build-manager', title: 'Build' },
+          { key: 'system-manager', title: 'Systems' }
+        ]},
+        { key: 'environment', title: 'Environment', hasSubitems: true, subitems: [
+          { key: 'environment-manager', title: 'Manager' }
+        ]},
+        { key: 'request', title: 'Request', hasSubitems: true, subitems: [
+          { key: 'change-request', title: 'Change Request' },
+          { key: 'maintenance-request', title: 'Maintenance Request' }
+        ]},
+        { key: 'deployment', title: 'Deployment', hasSubitems: true, subitems: [
+          { key: 'deployment-manager', title: 'Manager' }
+        ]}
       ]
     }
   ];
@@ -315,6 +307,18 @@ const Home = ({ activeContent: propActiveContent }) => {
           </div>
         );
       
+      case 'home':
+      case 'welcome':
+        return (
+          <div className="content-placeholder">
+            <h2>Welcome to Release Management!</h2>
+            <p>Select a menu item from the left panel to get started.</p>
+            <div style={{ color: '#adb5bd', fontSize: '14px', marginTop: '20px' }}>
+              Choose from the navigation menu to begin managing your releases, environments, and requests.
+            </div>
+          </div>
+        );
+      
       default:
         return (
           <div className="content-placeholder">
@@ -379,45 +383,60 @@ const Home = ({ activeContent: propActiveContent }) => {
         {/* Left Panel */}
         <div className={`left-panel ${leftPanelExpanded ? 'expanded' : 'collapsed'}`}>
           <button className="toggle-btn" onClick={toggleLeftPanel}>
-            <div className={`hamburger-icon ${leftPanelExpanded ? 'open' : ''}`}>
-              <span></span>
-              <span></span>
-              <span></span>
+            <div className="toggle-icon">
+              {leftPanelExpanded ? (
+                <span>&lt;</span>
+              ) : (
+                <div className="hamburger-lines">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              )}
             </div>
           </button>
           
           <ul className="nav-menu">
-            {menuItems.map((menu) => (
-              <li key={menu.key} className="nav-item">
-                <button 
-                  className="nav-header"
-                  onClick={() => toggleMenu(menu.key)}
-                >
-                  <span className="nav-icon">{menu.icon}</span>
-                  {leftPanelExpanded && (
-                    <>
-                      <span className="nav-text">{menu.title}</span>
-                      <span className={`nav-arrow ${expandedMenus[menu.key] ? 'expanded' : ''}`}>
-                        ▶
-                      </span>
-                    </>
-                  )}
-                </button>
-                
-                {leftPanelExpanded && (
-                  <div className={`nav-subitems ${expandedMenus[menu.key] ? 'expanded' : 'collapsed'}`}>
-                    {menu.items.map((item) => (
-                      <button
-                        key={item.key}
-                        className={`nav-subitem ${activeContent === item.key ? 'active' : ''}`}
+            {leftPanelExpanded && menuSections.map((section) => (
+              <div key={section.title}>
+                <div className="nav-section-title">{section.title}</div>
+                {section.items.map((item) => (
+                  <li key={item.key} className="nav-item">
+                    {item.hasSubitems ? (
+                      <>
+                        <button 
+                          className="nav-header"
+                          onClick={() => toggleMenu(item.key)}
+                        >
+                          <span className="nav-text">{item.title}</span>
+                          <span className={`nav-arrow ${expandedMenus[item.key] ? 'expanded' : ''}`}>
+                            ▶
+                          </span>
+                        </button>
+                        
+                        <div className={`nav-subitems ${expandedMenus[item.key] ? 'expanded' : 'collapsed'}`}>
+                          {item.subitems.map((subitem) => (
+                            <button
+                              key={subitem.key}
+                              className={`nav-subitem ${activeContent === subitem.key ? 'active' : ''}`}
+                              onClick={() => handleMenuItemClick(subitem.key)}
+                            >
+                              {subitem.title}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <button 
+                        className={`nav-header ${activeContent === item.key ? 'active' : ''}`}
                         onClick={() => handleMenuItemClick(item.key)}
                       >
-                        {item.title}
+                        <span className="nav-text">{item.title}</span>
                       </button>
-                    ))}
-                  </div>
-                )}
-              </li>
+                    )}
+                  </li>
+                ))}
+              </div>
             ))}
           </ul>
         </div>

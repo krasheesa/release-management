@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { releaseService } from '../services/api';
 import './ReleaseManager.css';
@@ -20,6 +20,17 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   const [releaseTypeFilter, setReleaseTypeFilter] = useState(() => {
     return localStorage.getItem('releaseManager_typeFilter') || 'all';
   });
+  // Load column filters from localStorage
+  const [columnFilters, setColumnFilters] = useState(() => {
+    const saved = localStorage.getItem('releaseManager_columnFilters');
+    return saved ? JSON.parse(saved) : { type: '', status: '' };
+  });
+  const [activeFilterColumn, setActiveFilterColumn] = useState(null);
+  // Load filter search terms from localStorage
+  const [filterSearchTerms, setFilterSearchTerms] = useState(() => {
+    const saved = localStorage.getItem('releaseManager_filterSearchTerms');
+    return saved ? JSON.parse(saved) : { type: '', status: '' };
+  });
   const [expandedReleases, setExpandedReleases] = useState({});
   const [releaseBuilds, setReleaseBuilds] = useState({});
 
@@ -27,6 +38,20 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
   useEffect(() => {
     loadReleases();
   }, []);
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeFilterColumn && !event.target.closest('.column-header')) {
+        setActiveFilterColumn(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeFilterColumn]);
 
   const loadReleases = async () => {
     try {
@@ -112,20 +137,97 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
     }
   };
 
+  // Handle sorting with proper localStorage persistence
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(newOrder);
+      localStorage.setItem('releaseManager_sortOrder', newOrder);
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+      localStorage.setItem('releaseManager_sortBy', field);
+      localStorage.setItem('releaseManager_sortOrder', 'asc');
+    }
+  };
+
+  const getSortIcon = (field) => {
+    if (sortBy !== field) return '⇅';
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  const handleColumnFilter = (column, value) => {
+    const newFilters = {
+      ...columnFilters,
+      [column]: value
+    };
+    setColumnFilters(newFilters);
+    localStorage.setItem('releaseManager_columnFilters', JSON.stringify(newFilters));
+    setActiveFilterColumn(null);
+  };
+
+  const handleFilterSearch = (column, value) => {
+    const newSearchTerms = {
+      ...filterSearchTerms,
+      [column]: value
+    };
+    setFilterSearchTerms(newSearchTerms);
+    localStorage.setItem('releaseManager_filterSearchTerms', JSON.stringify(newSearchTerms));
+  };
+
+  const getFilteredOptions = (column) => {
+    const searchTerm = filterSearchTerms[column].toLowerCase();
+    
+    if (column === 'type') {
+      const existingTypes = [...new Set(releases.map(release => release.type).filter(Boolean))];
+      return existingTypes
+        .filter(type => type.toLowerCase().includes(searchTerm))
+        .map(type => ({ id: type, name: type }));
+    } else if (column === 'status') {
+      const existingStatuses = [...new Set(releases.map(release => release.status).filter(Boolean))];
+      return existingStatuses
+        .filter(status => status.toLowerCase().includes(searchTerm))
+        .map(status => ({ id: status, name: status.replace('_', ' ').toUpperCase() }));
+    }
+    return [];
+  };
+
+  const clearColumnFilter = (column) => {
+    const newFilters = {
+      ...columnFilters,
+      [column]: ''
+    };
+    const newSearchTerms = {
+      ...filterSearchTerms,
+      [column]: ''
+    };
+    setColumnFilters(newFilters);
+    setFilterSearchTerms(newSearchTerms);
+    localStorage.setItem('releaseManager_columnFilters', JSON.stringify(newFilters));
+    localStorage.setItem('releaseManager_filterSearchTerms', JSON.stringify(newSearchTerms));
+  };
+
+  const hasActiveFilter = (column) => {
+    return columnFilters[column] !== '';
+  };
+
   // Filter and sort releases
   const filteredAndSortedReleases = releases
     .filter(release => {
-      // Release type filter
-      if (releaseTypeFilter === 'all') {
-        return true; // Show all types
-      } else {
-        return release.type === releaseTypeFilter; // Show specific type
-      }
+      // Search filter
+      const matchesSearch = 
+        release.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        release.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Release type filter (original dropdown)
+      const matchesTypeFilter = releaseTypeFilter === 'all' || release.type === releaseTypeFilter;
+      
+      // Column-based filters
+      const matchesColumnTypeFilter = !columnFilters.type || release.type === columnFilters.type;
+      const matchesColumnStatusFilter = !columnFilters.status || release.status === columnFilters.status;
+      
+      return matchesSearch && matchesTypeFilter && matchesColumnTypeFilter && matchesColumnStatusFilter;
     })
-    .filter(release => 
-      release.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      release.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
     .sort((a, b) => {
       let aValue = a[sortBy] || '';
       let bValue = b[sortBy] || '';
@@ -225,58 +327,9 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
           />
         </div>
 
-        <div className="filter-controls">
-          <label htmlFor="release-type-filter" className="filter-label">Filter by Type:</label>
-          <select
-            id="release-type-filter"
-            value={releaseTypeFilter}
-            onChange={(e) => handleReleaseTypeFilterChange(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Releases ({releaseCounts.all})</option>
-            <option value="Major">Major ({releaseCounts.Major})</option>
-            <option value="Minor">Minor ({releaseCounts.Minor})</option>
-            <option value="Patch">Patch ({releaseCounts.Patch})</option>
-          </select>
-          {releaseTypeFilter !== 'all' && (
-            <button
-              onClick={() => handleReleaseTypeFilterChange('all')}
-              className="clear-filter-btn"
-              title="Clear filter"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        <div className="sort-controls">
-          <select
-            value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              localStorage.setItem('releaseManager_sortBy', e.target.value);
-            }}
-            className="sort-select"
-          >
-            <option value="name">Sort by Name</option>
-            <option value="release_date">Sort by Release Date</option>
-            <option value="created_at">Sort by Created Date</option>
-            <option value="status">Sort by Status</option>
-          </select>
-          <button
-            onClick={() => {
-              const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-              setSortOrder(newOrder);
-              localStorage.setItem('releaseManager_sortOrder', newOrder);
-            }}
-            className="sort-order-btn"
-          >
-            {sortOrder === 'asc' ? '⬆️' : '⬇️'}
-          </button>
-        </div>
       </div>
 
-      <div className="releases-list">
+      <div className="releases-table-container">
         {filteredAndSortedReleases.length === 0 ? (
           <div className="empty-state">
             <h3>No releases found</h3>
@@ -286,95 +339,221 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
             </button>
           </div>
         ) : (
-          filteredAndSortedReleases.map(release => (
-            <div key={release.id} className="release-card">
-              <div 
-                className="release-header"
-                onClick={() => toggleReleaseExpansion(release.id)}
-              >
-                <div className="release-info">
-                  <div className="release-title">
-                    <h3>{release.name} <span className={`release-type release-type-${release.type?.toLowerCase()}`}>{release.type}</span></h3>
-                  </div>
-                  <p className="release-description">{release.description}</p>
-                  <div className="release-meta">
-                    <span className="release-date">
-                      📅 {formatDate(release.release_date)}
+          <table className="releases-table">
+            <thead>
+              <tr>
+                <th className="expand-col"></th>
+                <th 
+                  onClick={() => handleSort('name')}
+                  className="release-name-col sortable"
+                >
+                  Release Name {getSortIcon('name')}
+                </th>
+                <th className="type-col column-header">
+                  <div className="header-content">
+                    <span 
+                      onClick={() => handleSort('type')}
+                      className="sortable"
+                    >
+                      Type {getSortIcon('type')}
                     </span>
-                    {getStatusBadge(release.status)}
+                    <button
+                      className={`filter-btn ${hasActiveFilter('type') ? 'active' : ''}`}
+                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'type' ? null : 'type')}
+                    >
+                      🔍
+                    </button>
                   </div>
-                </div>
-                <div className="release-actions">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReleaseClick(release.id);
-                    }}
-                    className="edit-btn"
-                    title="View Release"
-                  >
-                    👁️
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteRelease(release.id, e)}
-                    className="delete-btn"
-                    title="Delete Release"
-                  >
-                    🗑️
-                  </button>
-                  <button className="expand-btn">
-                    {expandedReleases[release.id] ? '▼' : '▶️'}
-                  </button>
-                </div>
-              </div>
-
-              {expandedReleases[release.id] && (
-                <div className="release-builds">
-                  <h4>Associated Builds</h4>
-                  {releaseBuilds[release.id] ? (
-                    releaseBuilds[release.id].length > 0 ? (
-                      <div className="builds-table-container">
-                        <table className="builds-table">
-                          <thead>
-                            <tr>
-                              <th>Service Name</th>
-                              <th>Version</th>
-                              <th>Build Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {releaseBuilds[release.id].map(build => (
-                              <tr key={build.id} className="build-row">
-                                <td className="service-name-cell">
-                                  <button
-                                    className="build-name-link"
-                                    onClick={(e) => handleBuildClick(build.id, e)}
-                                    title={`Edit build ${build.version} for ${build.system?.name || 'Unknown System'}`}
-                                  >
-                                    {build.system?.name || 'Unknown System'}
-                                  </button>
-                                </td>
-                                <td className="version-cell">
-                                  <span className="version-badge">v{build.version}</span>
-                                </td>
-                                <td className="date-cell">
-                                  {formatDate(build.build_date)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  {activeFilterColumn === 'type' && (
+                    <div className="column-filter-dropdown">
+                      {hasActiveFilter('type') && (
+                        <button
+                          className="clear-filter-btn top"
+                          onClick={() => clearColumnFilter('type')}
+                        >
+                          ✕ Clear Filter
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search types..."
+                        value={filterSearchTerms.type}
+                        onChange={(e) => handleFilterSearch('type', e.target.value)}
+                        className="filter-search-input"
+                      />
+                      <div className="filter-options">
+                        {getFilteredOptions('type').length > 0 ? (
+                          getFilteredOptions('type').map(type => (
+                            <button
+                              key={type.id}
+                              className={`filter-option ${columnFilters.type === type.id ? 'selected' : ''}`}
+                              onClick={() => handleColumnFilter('type', type.id)}
+                            >
+                              {type.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="no-options">
+                            {filterSearchTerms.type ? 'No types found' : 'No types available'}
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <p className="no-builds">No builds associated with this release</p>
-                    )
-                  ) : (
-                    <p className="loading-builds">Loading builds...</p>
+                    </div>
                   )}
-                </div>
-              )}
-            </div>
-          ))
+                </th>
+                <th className="status-col column-header">
+                  <div className="header-content">
+                    <span 
+                      onClick={() => handleSort('status')}
+                      className="sortable"
+                    >
+                      Status {getSortIcon('status')}
+                    </span>
+                    <button
+                      className={`filter-btn ${hasActiveFilter('status') ? 'active' : ''}`}
+                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')}
+                    >
+                      🔍
+                    </button>
+                  </div>
+                  {activeFilterColumn === 'status' && (
+                    <div className="column-filter-dropdown">
+                      {hasActiveFilter('status') && (
+                        <button
+                          className="clear-filter-btn top"
+                          onClick={() => clearColumnFilter('status')}
+                        >
+                          ✕ Clear Filter
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search statuses..."
+                        value={filterSearchTerms.status}
+                        onChange={(e) => handleFilterSearch('status', e.target.value)}
+                        className="filter-search-input"
+                      />
+                      <div className="filter-options">
+                        {getFilteredOptions('status').length > 0 ? (
+                          getFilteredOptions('status').map(status => (
+                            <button
+                              key={status.id}
+                              className={`filter-option ${columnFilters.status === status.id ? 'selected' : ''}`}
+                              onClick={() => handleColumnFilter('status', status.id)}
+                            >
+                              {status.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="no-options">
+                            {filterSearchTerms.status ? 'No statuses found' : 'No statuses available'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </th>
+                <th 
+                  onClick={() => handleSort('release_date')}
+                  className="date-col sortable"
+                >
+                  Release Date {getSortIcon('release_date')}
+                </th>
+                <th className="action-col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAndSortedReleases.map(release => (
+                <Fragment key={release.id}>
+                  <tr className="release-row">
+                    <td className="expand-cell">
+                      <button 
+                        className="expand-toggle-btn"
+                        onClick={() => toggleReleaseExpansion(release.id)}
+                        title={expandedReleases[release.id] ? "Collapse" : "Expand"}
+                      >
+                        {expandedReleases[release.id] ? '⊟' : '⊞'}
+                      </button>
+                    </td>
+                    <td className="release-name-cell">
+                      <button
+                        className="release-name-link"
+                        onClick={() => handleReleaseClick(release.id)}
+                        title="Edit Release"
+                      >
+                        {release.name}
+                      </button>
+                    </td>
+                    <td className="type-cell">
+                      <span className={`release-type-badge ${release.type?.toLowerCase()}`}>
+                        {release.type}
+                      </span>
+                    </td>
+                    <td className="status-cell">
+                      {getStatusBadge(release.status)}
+                    </td>
+                    <td className="date-cell">
+                      {formatDate(release.release_date)}
+                    </td>
+                    <td className="action-cell">
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => handleReleaseClick(release.id)}
+                          className="action-btn edit-btn"
+                          title="Edit"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteRelease(release.id, e)}
+                          className="action-btn delete-btn"
+                          title="Delete"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {expandedReleases[release.id] && (
+                    <tr className="expanded-row">
+                      <td colSpan="6" className="expanded-content">
+                        <div className="associated-builds">
+                          <h4>Associated Builds</h4>
+                          {releaseBuilds[release.id] ? (
+                            releaseBuilds[release.id].length > 0 ? (
+                              <table className="builds-sub-table">
+                                <thead>
+                                  <tr>
+                                    <th>Service Name</th>
+                                    <th>Version</th>
+                                    <th>Build Date</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {releaseBuilds[release.id].map(build => (
+                                    <tr key={build.id}>
+                                      <td>{build.system?.name || 'Unknown System'}</td>
+                                      <td><span className="version-badge">{build.version}</span></td>
+                                      <td>{formatDate(build.build_date)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <p className="no-builds">No builds associated with this release</p>
+                            )
+                          ) : (
+                            <p className="loading-builds">Loading builds...</p>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

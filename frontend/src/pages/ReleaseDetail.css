@@ -47,7 +47,7 @@
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background-color: #000000;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -60,6 +60,7 @@
 }
 
 .save-btn:hover:not(:disabled) {
+  background-color: #333333;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
@@ -154,7 +155,7 @@
 }
 
 .add-build-btn {
-  background: linear-gradient(135deg, #007bff, #0056b3);
+  background-color: #000000;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -166,6 +167,7 @@
 }
 
 .add-build-btn:hover:not(:disabled) {
+  background-color: #333333;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }

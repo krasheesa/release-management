@@ -1,7 +1,7 @@
 /* Release Manager Styles */
 .release-manager {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -21,7 +21,7 @@
 }
 
 .create-release-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background-color: #000000;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -34,6 +34,7 @@
 }
 
 .create-release-btn:hover {
+  background-color: #333333;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
@@ -586,4 +587,337 @@
 
 .build-name-link:active {
   transform: translateX(1px);
+}
+
+/* New Table-based Layout Styles */
+.releases-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.releases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+
+.releases-table thead {
+  background-color: #f8f9fa;
+}
+
+.releases-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.releases-table .expand-col {
+  width: 50px;
+}
+
+.releases-table .release-name-col {
+  width: 25%;
+}
+
+.releases-table .type-col {
+  width: 15%;
+}
+
+.releases-table .status-col {
+  width: 15%;
+}
+
+.releases-table .date-col {
+  width: 20%;
+}
+
+.releases-table .action-col {
+  width: 25%;
+}
+
+.release-row {
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s;
+}
+
+.release-row:hover {
+  background-color: #f8f9fa;
+}
+
+.releases-table td {
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+
+.expand-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #6c757d;
+  transition: all 0.2s;
+}
+
+.expand-toggle-btn:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.release-name-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.release-name-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.release-type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.release-type-badge.major {
+  background-color: #dc3545;
+  color: white;
+}
+
+.release-type-badge.minor {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.release-type-badge.patch {
+  background-color: #28a745;
+  color: white;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.action-btn.edit-btn {
+  background-color: #000000;
+  color: white;
+}
+
+.action-btn.edit-btn:hover {
+  background-color: #333333;
+}
+
+.action-btn.delete-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.action-btn.delete-btn:hover {
+  background-color: #c82333;
+}
+
+.expanded-row {
+  background-color: #f8f9fa;
+}
+
+.expanded-content {
+  padding: 20px !important;
+}
+
+.associated-builds h4 {
+  margin: 0 0 16px 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.builds-sub-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.builds-sub-table th {
+  background-color: #e9ecef;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+}
+
+.builds-sub-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 13px;
+}
+
+.builds-sub-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.builds-sub-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.no-builds, .loading-builds {
+  color: #6c757d;
+  font-style: italic;
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Column Filter Styles */
+.column-header {
+  position: relative;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filter-btn {
+  background: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-btn:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.filter-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.column-filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 13px;
+}
+
+.filter-search-input:focus {
+  outline: none;
+  background: #f8f9fa;
+}
+
+.filter-options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.filter-option {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.filter-option:hover {
+  background: #f8f9fa;
+}
+
+.filter-option.selected {
+  background: #007bff;
+  color: white;
+}
+
+.clear-filter-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.clear-filter-btn:hover {
+  background: #e9ecef;
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  color: #007bff;
+}
+
+.no-options {
+  padding: 12px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 13px;
 }

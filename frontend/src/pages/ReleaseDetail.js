@@ -362,7 +362,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
                           {build.system?.name || 'Unknown System'}
                         </td>
                         <td className="version-cell">
-                          <span className="version-badge">v{build.version}</span>
+                          <span className="version-badge">{build.version}</span>
                         </td>
                         <td className="date-cell">
                           {formatDate(build.build_date)}
@@ -373,7 +373,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
                             className="remove-build-btn"
                             title="Remove from release"
                           >
-                            ✖️
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -430,7 +430,7 @@ const ReleaseDetail = ({ releaseId, embedded = false, onBack }) => {
                             {build.system?.name || 'Unknown System'}
                           </td>
                           <td className="version-cell">
-                            <span className="version-badge">v{build.version}</span>
+                            <span className="version-badge">{build.version}</span>
                           </td>
                           <td className="date-cell">
                             {formatDate(build.build_date)}

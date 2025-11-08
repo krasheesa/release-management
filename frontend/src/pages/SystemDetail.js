@@ -376,7 +376,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
                     {filteredAndSortedBuilds.map(build => (
                       <tr key={build.id} className="build-row">
                         <td className="version-cell">
-                          <span className="version-badge">v{build.version}</span>
+                          <span className="version-badge">{build.version}</span>
                         </td>
                         <td className="release-cell">
                           {build.release?.name || (

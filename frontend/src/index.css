@@ -1,11 +1,14 @@
 /* Universal box-sizing rule */
 *, *::before, *::after {
   box-sizing: border-box;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -44,6 +47,7 @@ code {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
+  font-family: 'Inter', sans-serif;
   box-sizing: border-box;
 }
 
@@ -51,6 +55,11 @@ code {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Ensure all form elements use Inter */
+input, button, select, textarea {
+  font-family: 'Inter', sans-serif;
 }
 
 .btn {
@@ -62,6 +71,7 @@ code {
   border-radius: 4px;
   font-size: 16px;
   font-weight: 500;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -138,8 +148,8 @@ code {
 
 .top-panel {
   height: 60px;
-  background-color: #343a40;
-  color: white;
+  background-color: #F5F5F5;
+  color: #333;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -161,7 +171,7 @@ code {
 .account-button {
   background: none;
   border: none;
-  color: white;
+  color: #333;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -170,7 +180,7 @@ code {
 }
 
 .account-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .account-dropdown {
@@ -205,115 +215,145 @@ code {
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
 
 .left-panel {
-  background-color: #495057;
-  color: white;
+  background-color: white;
+  color: #333;
   transition: width 0.3s ease;
-  overflow-y: auto;
+  overflow: visible;
   box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .left-panel.expanded {
-  width: 250px;
+  width: 280px;
 }
 
 .left-panel.collapsed {
-  width: 60px;
+  width: 0;
 }
 
 .toggle-btn {
-  width: 100%;
+  position: absolute;
+  top: 20px;
+  right: -25px;
+  width: 50px;
   height: 50px;
-  background: #6c757d;
+  background: transparent;
   border: none;
-  color: white;
   cursor: pointer;
-  border-bottom: 1px solid #5a6268;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
 }
 
-.toggle-btn:hover {
-  background-color: #5a6268;
+.toggle-btn:hover .toggle-icon {
+  transform: scale(1.05);
 }
 
-/* Hamburger Icon */
-.hamburger-icon {
+/* Toggle Icon Circle */
+.toggle-icon {
+  width: 50px;
+  height: 50px;
+  background-color: #e9ecef;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  color: #333;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.toggle-icon:hover {
+  background-color: #dee2e6;
+  transform: scale(1.05);
+}
+
+/* Hamburger Icon inside circle when collapsed */
+.hamburger-lines {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  width: 20px;
-  height: 16px;
-  margin: auto;
+  width: 18px;
+  height: 14px;
 }
 
-.hamburger-icon span {
+.hamburger-lines span {
   display: block;
   width: 100%;
-  height: 2px;
-  background-color: white;
+  height: 2.5px;
+  background-color: #6c757d;
   border-radius: 1px;
   transition: all 0.3s ease;
-  transform-origin: center;
-}
-
-/* Animation when panel is open */
-.hamburger-icon.open span:nth-child(1) {
-  transform: rotate(45deg) translate(6px, 6px);
-}
-
-.hamburger-icon.open span:nth-child(2) {
-  opacity: 0;
-  transform: scale(0);
-}
-
-.hamburger-icon.open span:nth-child(3) {
-  transform: rotate(-45deg) translate(6px, -6px);
 }
 
 .nav-menu {
-  padding: 0;
+  padding: 20px 0;
   margin: 0;
   list-style: none;
 }
 
 .nav-item {
-  border-bottom: 1px solid #5a6268;
+  border-bottom: none;
+  margin-bottom: 5px;
+}
+
+.nav-section-title {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 5px;
 }
 
 .nav-header {
   display: flex;
   align-items: center;
-  padding: 15px 20px;
+  padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
   background: none;
   border: none;
-  color: white;
+  color: #333;
   width: 100%;
   text-align: left;
   font-size: 14px;
   font-weight: 500;
+  border-radius: 0 25px 25px 0;
+  margin-right: 20px;
 }
 
 .nav-header:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #f8f9fa;
 }
 
-.nav-icon {
-  margin-right: 10px;
-  width: 16px;
-  text-align: center;
+.nav-header.active {
+  background-color: #F5F5F5;
+  font-weight: 500;
 }
 
 .nav-text {
   flex: 1;
+  font-weight: 500;
 }
 
 .nav-arrow {
   transition: transform 0.2s;
-  font-size: 12px;
+  font-size: 10px;
+  color: #6c757d;
 }
 
 .nav-arrow.expanded {
@@ -321,9 +361,10 @@ code {
 }
 
 .nav-subitems {
-  background-color: #5a6268;
+  background-color: transparent;
   overflow: hidden;
   transition: max-height 0.3s ease;
+  margin-left: 0;
 }
 
 .nav-subitems.collapsed {
@@ -336,21 +377,30 @@ code {
 
 .nav-subitem {
   display: block;
-  padding: 12px 20px 12px 50px;
-  color: #e9ecef;
+  padding: 10px 16px 10px 48px;
+  color: #6c757d;
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   border: none;
   background: none;
-  width: 100%;
+  width: calc(100% - 20px);
   text-align: left;
   cursor: pointer;
   font-size: 13px;
+  border-radius: 0 25px 25px 0;
+  margin-right: 20px;
+  font-weight: 400;
 }
 
 .nav-subitem:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+.nav-subitem.active {
+  background-color: #F5F5F5;
+  color: #333;
+  font-weight: 500;
 }
 
 .content-area {
