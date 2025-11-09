@@ -304,12 +304,6 @@ const ReleaseManager = ({ embedded = false, onNavigateToDetail }) => {
       <div className="release-manager-header">
         <div className="header-left">
           <h1>Release Manager</h1>
-          <div className="results-info">
-            {releaseTypeFilter === 'all' ? 
-              `Showing ${filteredAndSortedReleases.length} of ${releases.length} releases` :
-              `Showing ${filteredAndSortedReleases.length} ${releaseTypeFilter} ${filteredAndSortedReleases.length === 1 ? 'release' : 'releases'}`
-            }
-          </div>
         </div>
         <button onClick={handleCreateRelease} className="create-release-btn">
           + Create New Release
