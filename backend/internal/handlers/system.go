@@ -58,6 +58,10 @@ func (h *SystemHandler) CreateSystem(c *gin.Context) {
 		return
 	}
 
+	if system.Status == "" {
+		system.Status = models.StatusActive
+	}
+
 	// Validate type consistency with parent_id
 	if system.ParentID != nil && *system.ParentID != "" {
 		// If has parent, must be subsystem
@@ -141,6 +145,25 @@ func (h *SystemHandler) UpdateSystem(c *gin.Context) {
 	// Use current type if not provided in updates
 	if updates.Type == "" {
 		updates.Type = system.Type
+	}
+
+	// Modifying parent systems status
+	if updates.Status != "" && system.Status != updates.Status {
+		// If system is parent_systems, check subsystems status
+		if system.Type == models.SystemTypeParent {
+			var subsystems []models.System
+			if err := database.DB.Where("parent_id = ?", id).Find(&subsystems).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subsystems for status validation"})
+				return
+			}
+
+			for _, subsystem := range subsystems {
+				if subsystem.Status != updates.Status {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "All subsystems must have the same status as their parent_systems"})
+					return
+				}
+			}
+		}
 	}
 
 	// Validate type consistency with parent_id

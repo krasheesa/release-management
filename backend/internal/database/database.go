@@ -172,6 +172,40 @@ func migrateSystemTypes() error {
 	return nil
 }
 
+func migrateSystemStatus() error {
+	// Check if the migration has already been completed by checking for NOT NULL constraint
+	var result int
+	if err := DB.Raw("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'systems' AND column_name = 'status' AND is_nullable = 'NO'").Scan(&result).Error; err == nil && result > 0 {
+		log.Println("System status migration already completed, skipping")
+		return nil
+	}
+
+	log.Println("Starting system status migration...")
+
+	// Update all existing systems that have null status to 'active'
+	var updatedCount int64
+	if err := DB.Exec("UPDATE systems SET status = ? WHERE status IS NULL OR status = ''", models.StatusActive).Error; err != nil {
+		log.Printf("Failed to update systems status: %v", err)
+		return err
+	}
+
+	// Get the number of updated records
+	DB.Model(&models.System{}).Where("status = ?", models.StatusActive).Count(&updatedCount)
+
+	log.Printf("Systems status migration completed for %d system", updatedCount)
+
+	// Now add the NOT NULL constraint
+	log.Println("Adding NOT NULL constraint to status column...")
+	if err := DB.Exec("ALTER TABLE systems ALTER COLUMN status SET NOT NULL").Error; err != nil {
+		log.Printf("Failed to add NOT NULL constraint: %v", err)
+		return err
+	}
+
+	log.Println("Systems status migration fully completed")
+	return nil
+
+}
+
 func migrateEnvironmentStatus() error {
 	// Check if the migration has already been completed by checking for NOT NULL constraint
 	var result int

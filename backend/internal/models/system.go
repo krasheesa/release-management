@@ -8,11 +8,15 @@ import (
 )
 
 type SystemType string
+type SystemStatus string
 
 const (
 	SystemTypeParent    SystemType = "parent_systems"
 	SystemTypeSystem    SystemType = "systems"
 	SystemTypeSubsystem SystemType = "subsystems"
+
+	StatusActive     SystemStatus = "active"
+	StatusDeprecated SystemStatus = "deprecated"
 )
 
 func (st SystemType) IsValid() bool {
@@ -24,13 +28,14 @@ func (st SystemType) IsValid() bool {
 }
 
 type System struct {
-	ID          string     `json:"id" gorm:"primaryKey;type:varchar(36)"`
-	Name        string     `json:"name" gorm:"not null"`
-	Description *string    `json:"description,omitempty"`
-	ParentID    *string    `json:"parent_id,omitempty" gorm:"type:varchar(36)"`
-	Type        SystemType `json:"type" gorm:"type:varchar(20)"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          string       `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	Name        string       `json:"name" gorm:"not null"`
+	Description *string      `json:"description,omitempty"`
+	ParentID    *string      `json:"parent_id,omitempty" gorm:"type:varchar(36)"`
+	Type        SystemType   `json:"type" gorm:"type:varchar(20)"`
+	Status      SystemStatus `json:"status" gorm:"type:varchar(20);default:'active'"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 
 	// Relationships
 	Parent     *System  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
