@@ -20,13 +20,66 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
   const [typeFilter, setTypeFilter] = useState(() => {
     return localStorage.getItem('systemManager_typeFilter') || 'root';
   });
+  // Load column filters from localStorage with migration from old array format
+  const [columnFilters, setColumnFilters] = useState(() => {
+    const saved = localStorage.getItem('systemManager_columnFilters');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Migration: if old format (arrays), convert to new format (strings)
+        if (Array.isArray(parsed.name) || Array.isArray(parsed.type) || Array.isArray(parsed.status)) {
+          const migrated = { name: '', type: '', status: '' };
+          localStorage.setItem('systemManager_columnFilters', JSON.stringify(migrated));
+          return migrated;
+        }
+        return parsed;
+      } catch (e) {
+        // If parsing fails, reset to defaults
+        const defaults = { name: '', type: '', status: '' };
+        localStorage.setItem('systemManager_columnFilters', JSON.stringify(defaults));
+        return defaults;
+      }
+    }
+    return { name: '', type: '', status: '' };
+  });
+  const [activeFilterColumn, setActiveFilterColumn] = useState(null);
+  // Load filter search terms from localStorage
+  const [filterSearchTerms, setFilterSearchTerms] = useState(() => {
+    const saved = localStorage.getItem('systemManager_filterSearchTerms');
+    return saved ? JSON.parse(saved) : { name: '', type: '', status: '' };
+  });
   const [expandedSystems, setExpandedSystems] = useState({});
   const [systemSubsystems, setSystemSubsystems] = useState({});
 
-  // Load systems on component mount
+  // Load systems on component mount and handle data migration
   useEffect(() => {
+    // Clear old localStorage data that might cause conflicts
+    const version = localStorage.getItem('systemManager_version');
+    if (version !== '2.0') {
+      localStorage.removeItem('systemManager_columnFilters');
+      localStorage.removeItem('systemManager_filterSearchTerms');
+      localStorage.setItem('systemManager_version', '2.0');
+      // Reset states to defaults
+      setColumnFilters({ name: '', type: '', status: '' });
+      setFilterSearchTerms({ name: '', type: '', status: '' });
+    }
+    
     loadSystems();
   }, []);
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeFilterColumn && !event.target.closest('.column-header')) {
+        setActiveFilterColumn(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeFilterColumn]);
 
   const loadSystems = async () => {
     try {
@@ -119,22 +172,103 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
     }
   };
 
+  // Handle sorting with proper localStorage persistence
+  const handleSort = (field) => {
+    const newSortOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortBy(field);
+    setSortOrder(newSortOrder);
+    localStorage.setItem('systemManager_sortBy', field);
+    localStorage.setItem('systemManager_sortOrder', newSortOrder);
+  };
+
+  const getSortIcon = (field) => {
+    if (sortBy !== field) return '⇅';
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  const handleColumnFilter = (column, value) => {
+    const newFilters = {
+      ...columnFilters,
+      [column]: value
+    };
+    setColumnFilters(newFilters);
+    localStorage.setItem('systemManager_columnFilters', JSON.stringify(newFilters));
+    setActiveFilterColumn(null);
+  };
+
+  const handleFilterSearch = (column, value) => {
+    const newSearchTerms = {
+      ...filterSearchTerms,
+      [column]: value
+    };
+    setFilterSearchTerms(newSearchTerms);
+    localStorage.setItem('systemManager_filterSearchTerms', JSON.stringify(newSearchTerms));
+  };
+
+  const getFilteredOptions = (column) => {
+    const searchTerm = filterSearchTerms[column]?.toLowerCase() || '';
+    
+    if (column === 'name') {
+      const existingNames = [...new Set(systems.map(system => system.name).filter(Boolean))];
+      return existingNames
+        .filter(name => name.toLowerCase().includes(searchTerm))
+        .map(name => ({ id: name, name }));
+    } else if (column === 'type') {
+      const existingTypes = [...new Set(systems.map(system => getSystemType(system)).filter(Boolean))];
+      return existingTypes
+        .filter(type => type.toLowerCase().includes(searchTerm))
+        .map(type => ({ id: type, name: type }));
+    } else if (column === 'status') {
+      return [{id: 'Active', name: 'Active'}]
+        .filter(status => status.name.toLowerCase().includes(searchTerm));
+    }
+    return [];
+  };
+
+  const clearColumnFilter = (column) => {
+    const newFilters = {
+      ...columnFilters,
+      [column]: ''
+    };
+    const newSearchTerms = {
+      ...filterSearchTerms,
+      [column]: ''
+    };
+    setColumnFilters(newFilters);
+    setFilterSearchTerms(newSearchTerms);
+    localStorage.setItem('systemManager_columnFilters', JSON.stringify(newFilters));
+    localStorage.setItem('systemManager_filterSearchTerms', JSON.stringify(newSearchTerms));
+  };
+
+  const hasActiveFilter = (column) => {
+    return columnFilters[column] !== '';
+  };
+
   // Filter and sort systems
   const filteredAndSortedSystems = systems
     .filter(system => {
-      // Type filter
+      // Search filter
+      const matchesSearch = 
+        system.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        system.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Type filter (original dropdown)
+      let matchesTypeFilter = true;
       if (typeFilter === 'all') {
-        return true; // Show all types
+        matchesTypeFilter = true; // Show all types
       } else if (typeFilter === 'root') {
-        return system.type !== 'subsystems'; // Show parent_systems and systems only
+        matchesTypeFilter = system.type !== 'subsystems'; // Show parent_systems and systems only
       } else {
-        return system.type === typeFilter; // Show specific type
+        matchesTypeFilter = system.type === typeFilter; // Show specific type
       }
+      
+      // Column-based filters with safety checks
+      const matchesColumnNameFilter = !columnFilters?.name || system.name === columnFilters.name;
+      const matchesColumnTypeFilter = !columnFilters?.type || getSystemType(system) === columnFilters.type;
+      const matchesColumnStatusFilter = !columnFilters?.status || columnFilters.status === 'Active';
+      
+      return matchesSearch && matchesTypeFilter && matchesColumnNameFilter && matchesColumnTypeFilter && matchesColumnStatusFilter;
     })
-    .filter(system => 
-      system.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      system.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
     .sort((a, b) => {
       let aValue = a[sortBy] || '';
       let bValue = b[sortBy] || '';
@@ -212,12 +346,6 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
       <div className="system-manager-header">
         <div className="header-left">
           <h1>System Manager</h1>
-          <div className="results-info">
-            {typeFilter === 'all' ? 
-              `Showing ${filteredAndSortedSystems.length} of ${systems.length} systems` :
-              `Showing ${filteredAndSortedSystems.length} ${typeFilter.replace('_', ' ')} ${filteredAndSortedSystems.length === 1 ? 'system' : 'systems'}`
-            }
-          </div>
         </div>
         <button onClick={handleCreateSystem} className="create-system-btn">
           + Create New System
@@ -259,33 +387,9 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
             </button>
           )}
         </div>
-
-        <div className="sort-controls">
-          <select
-            value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value);
-              localStorage.setItem('systemManager_sortBy', e.target.value);
-            }}
-            className="sort-select"
-          >
-            <option value="name">Sort by Name</option>
-            <option value="created_at">Sort by Created Date</option>
-          </select>
-          <button
-            onClick={() => {
-              const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-              setSortOrder(newOrder);
-              localStorage.setItem('systemManager_sortOrder', newOrder);
-            }}
-            className="sort-order-btn"
-          >
-            {sortOrder === 'asc' ? '⬆️' : '⬇️'}
-          </button>
-        </div>
       </div>
 
-      <div className="systems-list">
+      <div className="systems-table-container">
         {filteredAndSortedSystems.length === 0 ? (
           <div className="empty-state">
             <h3>No systems found</h3>
@@ -295,93 +399,189 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
             </button>
           </div>
         ) : (
-          filteredAndSortedSystems.map(system => (
-            <div key={system.id} className="system-card">
-              <div 
-                className="system-header"
-                onClick={() => toggleSystemExpansion(system.id)}
-              >
-                <div className="system-info">
-                  <div className="system-title">
-                    <h3>{system.name}</h3>
-                    <span className="system-type">{getSystemType(system)}</span>
+          <table className="systems-table">
+            <thead>
+              <tr>
+                <th className="expand-col"></th>
+                <th className="column-header name-col" onClick={() => handleSort('name')}>
+                  <div className="header-content">
+                    <span className="sortable">System Name {getSortIcon('name')}</span>
                   </div>
-                  <p className="system-description">{system.description}</p>
-                  <div className="system-meta">
-                    <span className="system-date">
-                      📅 {formatDate(system.created_at)}
-                    </span>
-                    {system.parent_id && (
-                      <span className="parent-system">
-                        🔗 Parent: {getParentSystemName(system.parent_id)}
-                      </span>
-                    )}
+                </th>
+                <th className="column-header type-col" onClick={() => handleSort('type')}>
+                  <div className="header-content">
+                    <span className="sortable">Type {getSortIcon('type')}</span>
                   </div>
-                </div>
-                <div className="system-actions">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSystemClick(system.id);
-                    }}
-                    className="view-btn"
-                    title="View System"
-                  >
-                    👁️
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteSystem(system.id, e)}
-                    className="delete-btn"
-                    title="Delete System"
-                  >
-                    🗑️
-                  </button>
-                  <button className="expand-btn">
-                    {expandedSystems[system.id] ? '▼' : '▶️'}
-                  </button>
-                </div>
-              </div>
-
-              {expandedSystems[system.id] && (
-                <div className="system-subsystems">
-                  <h4>Subsystems</h4>
-                  {systemSubsystems[system.id] ? (
-                    systemSubsystems[system.id].length > 0 ? (
-                      <div className="subsystems-list">
-                        {systemSubsystems[system.id].map(subsystem => (
-                          <div key={subsystem.id} className="subsystem-item">
-                            <div className="subsystem-info">
-                              <strong>{subsystem.name}</strong>
-                              <p className="subsystem-description">{subsystem.description}</p>
-                            </div>
-                            <div className="subsystem-meta">
-                              <span className="subsystem-date">
-                                📅 {formatDate(subsystem.created_at)}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSystemClick(subsystem.id);
-                                }}
-                                className="view-subsystem-btn"
-                                title="View Subsystem"
-                              >
-                                👁️ View
-                              </button>
-                            </div>
+                </th>
+                <th>Description</th>
+                <th className="column-header status-col" onClick={() => handleSort('status')}>
+                  <div className="header-content">
+                    <span className="sortable">Status {getSortIcon('status')}</span>
+                    <button 
+                      className={`filter-btn ${hasActiveFilter('status') ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status');
+                      }}
+                      title="Filter by status"
+                    >
+                      🔍
+                    </button>
+                  </div>
+                  {activeFilterColumn === 'status' && (
+                    <div className="column-filter-dropdown">
+                      {hasActiveFilter('status') && (
+                        <button
+                          className="clear-filter-btn top"
+                          onClick={() => clearColumnFilter('status')}
+                        >
+                          ✕ Clear Filter
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search status..."
+                        value={filterSearchTerms.status}
+                        onChange={(e) => handleFilterSearch('status', e.target.value)}
+                        className="filter-search-input"
+                      />
+                      <div className="filter-options">
+                        {getFilteredOptions('status').length > 0 ? (
+                          getFilteredOptions('status').map(option => (
+                            <button
+                              key={option.id}
+                              className={`filter-option ${columnFilters.status === option.id ? 'selected' : ''}`}
+                              onClick={() => handleColumnFilter('status', option.id)}
+                            >
+                              {option.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="no-options">
+                            {filterSearchTerms.status ? 'No statuses found' : 'No statuses available'}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    ) : (
-                      <p className="no-subsystems">No subsystems for this system</p>
-                    )
-                  ) : (
-                    <p className="loading-subsystems">Loading subsystems...</p>
+                    </div>
                   )}
-                </div>
-              )}
-            </div>
-          ))
+                </th>
+                <th className="date-col" onClick={() => handleSort('created_at')}>
+                  <span className="sortable">Created At {getSortIcon('created_at')}</span>
+                </th>
+                <th className="action-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAndSortedSystems.map(system => (
+                <React.Fragment key={system.id}>
+                  <tr className="system-row">
+                    <td className="expand-cell">
+                      {getSystemType(system) === 'Parent System' && (
+                        <button
+                          className="expand-toggle-btn"
+                          onClick={() => toggleSystemExpansion(system.id)}
+                          title={expandedSystems[system.id] ? 'Collapse subsystems' : 'Expand subsystems'}
+                        >
+                          {expandedSystems[system.id] ? '⊟' : '⊞'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="system-name-cell">
+                      <button
+                        className="system-name-link"
+                        onClick={() => handleSystemClick(system.id)}
+                        title="Edit system"
+                      >
+                        {system.name}
+                      </button>
+                    </td>
+                    <td className="type-cell">
+                      <span className={`system-type-badge ${getSystemType(system).toLowerCase().replace(' ', '-')}`}>
+                        {getSystemType(system)}
+                      </span>
+                    </td>
+                    <td className="description-cell">{system.description}</td>
+                    <td className="status-cell">
+                      <span className="status-badge status-active">Active</span>
+                    </td>
+                    <td className="date-cell">{formatDate(system.created_at)}</td>
+                    <td className="action-cell">
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => handleSystemClick(system.id)}
+                          className="action-btn edit-btn"
+                          title="Edit System"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteSystem(system.id, e)}
+                          className="action-btn delete-btn"
+                          title="Delete System"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  {expandedSystems[system.id] && getSystemType(system) === 'Parent System' && (
+                    <tr className="expanded-row">
+                      <td colSpan="7" className="expanded-content">
+                        <div className="associated-subsystems">
+                          <h4>Subsystems</h4>
+                          {systemSubsystems[system.id] ? (
+                            systemSubsystems[system.id].length > 0 ? (
+                              <table className="subsystems-sub-table">
+                                <thead>
+                                  <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {systemSubsystems[system.id].map(subsystem => (
+                                    <tr key={subsystem.id}>
+                                      <td>
+                                        <button
+                                          className="system-name-link"
+                                          onClick={() => handleSystemClick(subsystem.id)}
+                                          title="Edit subsystem"
+                                        >
+                                          {subsystem.name}
+                                        </button>
+                                      </td>
+                                      <td>{subsystem.description}</td>
+                                      <td>{formatDate(subsystem.created_at)}</td>
+                                      <td>
+                                        <button
+                                          onClick={() => handleSystemClick(subsystem.id)}
+                                          className="action-btn edit-btn"
+                                          title="Edit Subsystem"
+                                        >
+                                          Edit
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <div className="no-subsystems">No subsystems for this system</div>
+                            )
+                          ) : (
+                            <div className="loading-subsystems">Loading subsystems...</div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
