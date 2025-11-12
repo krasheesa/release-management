@@ -119,6 +119,12 @@ func (h *SystemHandler) UpdateSystem(c *gin.Context) {
 		return
 	}
 
+	// Validate status if provided
+	if updates.Status != "" && updates.Status != models.StatusActive && updates.Status != models.StatusDeprecated {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be 'active' or 'deprecated'"})
+		return
+	}
+
 	// Check if type can be changed
 	if updates.Type != "" && system.Type != updates.Type {
 		// Cannot change type if parent_systems has subsystems
@@ -147,19 +153,19 @@ func (h *SystemHandler) UpdateSystem(c *gin.Context) {
 		updates.Type = system.Type
 	}
 
-	// Modifying parent systems status
-	if updates.Status != "" && system.Status != updates.Status {
-		// If system is parent_systems, check subsystems status
-		if system.Type == models.SystemTypeParent {
-			var subsystems []models.System
-			if err := database.DB.Where("parent_id = ?", id).Find(&subsystems).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subsystems for status validation"})
-				return
-			}
+	// Modifying parent systems status - update subsystems to match
+	if updates.Status != "" && system.Status != updates.Status && system.Type == models.SystemTypeParent {
+		var subsystems []models.System
+		if err := database.DB.Where("parent_id = ?", id).Find(&subsystems).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch subsystems for status update"})
+			return
+		}
 
-			for _, subsystem := range subsystems {
-				if subsystem.Status != updates.Status {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "All subsystems must have the same status as their parent_systems"})
+		for _, subsystem := range subsystems {
+			if subsystem.Status != updates.Status {
+				subsystem.Status = updates.Status
+				if err := database.DB.Save(&subsystem).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update subsystem status: " + err.Error()})
 					return
 				}
 			}
