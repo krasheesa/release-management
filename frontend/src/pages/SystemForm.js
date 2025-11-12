@@ -17,6 +17,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
     name: '',
     description: '',
     type: '',
+    status: 'active',
     parent_id: parentId || ''
   });
   const [loading, setLoading] = useState(false);
@@ -54,6 +55,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
         name: system.name || '',
         description: system.description || '',
         type: system.type || '',
+        status: system.status || 'active',
         parent_id: system.parent_id || ''
       });
     } catch (err) {
@@ -111,6 +113,7 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         type: formData.type,
+        status: formData.status,
         parent_id: formData.type === 'subsystems' ? formData.parent_id : null
       };
 
@@ -243,6 +246,25 @@ const SystemForm = ({ systemId, parentSystemId, embedded = false, onBack }) => {
             {formData.type === 'parent_systems' && 'Parent systems are containers for subsystems'}
             {formData.type === 'systems' && 'Independent systems that can have builds'}
             {formData.type === 'subsystems' && 'Systems that belong to a parent system'}
+          </small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="status">Status *</label>
+          <select
+            id="status"
+            name="status"
+            value={formData.status}
+            onChange={handleInputChange}
+            required
+            disabled={loading}
+          >
+            <option value="active">Active</option>
+            <option value="deprecated">Deprecated</option>
+          </select>
+          <small className="form-help">
+            {formData.status === 'active' && 'Systems that are currently in use'}
+            {formData.status === 'deprecated' && 'Systems that are no longer in active use'}
           </small>
         </div>
 
