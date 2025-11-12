@@ -490,7 +490,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
                               </button>
                             </td>
                             <td>{subsystem.description}</td>
-                            <td className="status-cell"><span className="status-badge status-active">{subsystem.status}</span></td>
+                            <td className="status-cell"><span className={`status-badge status-${subsystem.status}`}>{subsystem.status}</span></td>
                             <td>{formatDate(subsystem.created_at)}</td>
                             <td className="action-cell">
                               <div className="action-buttons">

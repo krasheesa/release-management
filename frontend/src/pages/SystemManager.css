@@ -439,5 +439,24 @@
   }
 }
 
+/* Status Badge Styles */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-deprecated {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
 
 

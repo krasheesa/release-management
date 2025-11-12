@@ -510,7 +510,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                     </td>
                     <td className="description-cell">{system.description}</td>
                     <td className="status-cell">
-                      <span className="status-badge status-active">{system.status}</span>
+                      <span className={`status-badge status-${system.status}`}>{system.status}</span>
                     </td>
                     <td className="date-cell">{formatDate(system.created_at)}</td>
                     <td className="action-cell">
@@ -563,7 +563,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                                         </button>
                                       </td>
                                       <td>{subsystem.description}</td>
-                                      <td className="status-cell"><span className="status-badge status-active">{subsystem.status}</span></td>
+                                      <td className="status-cell"><span className={`status-badge status-${subsystem.status}`}>{subsystem.status}</span></td>
                                       <td>{formatDate(subsystem.created_at)}</td>
                                       <td className="action-cell">
                                         <div className="action-buttons">
