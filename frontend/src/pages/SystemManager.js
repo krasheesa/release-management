@@ -129,6 +129,14 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
     }
   };
 
+  const handleSystemEdit = (systemId) => {
+    if (embedded && onNavigateToDetail) {
+      onNavigateToDetail(`${systemId}/edit`);
+    } else {
+      navigate(`/systems/${systemId}/edit`);
+    }
+  };
+
   const handleCreateSystem = () => {
     if (embedded && onNavigateToDetail) {
       onNavigateToDetail('new');
@@ -502,13 +510,13 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                     </td>
                     <td className="description-cell">{system.description}</td>
                     <td className="status-cell">
-                      <span className="status-badge status-active">Active</span>
+                      <span className="status-badge status-active">{system.status}</span>
                     </td>
                     <td className="date-cell">{formatDate(system.created_at)}</td>
                     <td className="action-cell">
                       <div className="action-buttons">
                         <button
-                          onClick={() => handleSystemClick(system.id)}
+                          onClick={() => handleSystemEdit(system.id)}
                           className="action-btn edit-btn"
                           title="Edit System"
                         >
@@ -537,6 +545,7 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                                   <tr>
                                     <th>Name</th>
                                     <th>Description</th>
+                                    <th>Status</th>
                                     <th>Created At</th>
                                     <th>Actions</th>
                                   </tr>
@@ -554,15 +563,25 @@ const SystemManager = ({ embedded = false, onNavigateToDetail }) => {
                                         </button>
                                       </td>
                                       <td>{subsystem.description}</td>
+                                      <td className="status-cell"><span className="status-badge status-active">{subsystem.status}</span></td>
                                       <td>{formatDate(subsystem.created_at)}</td>
-                                      <td>
-                                        <button
-                                          onClick={() => handleSystemClick(subsystem.id)}
-                                          className="action-btn edit-btn"
-                                          title="Edit Subsystem"
-                                        >
-                                          Edit
-                                        </button>
+                                      <td className="action-cell">
+                                        <div className="action-buttons">
+                                          <button
+                                            onClick={() => handleSystemEdit(subsystem.id)}
+                                            className="action-btn edit-btn"
+                                            title="Edit Subsystem"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={(e) => handleDeleteSystem(subsystem.id, e)}
+                                            className="action-btn delete-btn"
+                                            title="Delete Subsystem"
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   ))}
