@@ -22,6 +22,8 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
   const [buildSearchTerm, setBuildSearchTerm] = useState('');
   const [buildSortBy, setBuildSortBy] = useState('build_date');
   const [buildSortOrder, setBuildSortOrder] = useState('desc');
+  const [subsystemSortBy, setSubsystemSortBy] = useState('name');
+  const [subsystemSortOrder, setSubsystemSortOrder] = useState('asc');
 
   useEffect(() => {
     if (currentSystemId && currentSystemId !== 'new') {
@@ -134,11 +136,11 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
       subsystem.description?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
-      let aValue = a[sortBy] || '';
-      let bValue = b[sortBy] || '';
+      let aValue = a[subsystemSortBy] || '';
+      let bValue = b[subsystemSortBy] || '';
       
       // Handle date sorting
-      if (sortBy === 'created_at') {
+      if (subsystemSortBy === 'created_at') {
         aValue = new Date(aValue);
         bValue = new Date(bValue);
       } else {
@@ -146,7 +148,7 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
         bValue = bValue.toString().toLowerCase();
       }
       
-      if (sortOrder === 'asc') {
+      if (subsystemSortOrder === 'asc') {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
@@ -178,9 +180,23 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
     }
   };
 
+  const handleSubsystemSort = (field) => {
+    if (subsystemSortBy === field) {
+      setSubsystemSortOrder(subsystemSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSubsystemSortBy(field);
+      setSubsystemSortOrder('asc');
+    }
+  };
+
   const getBuildSortIcon = (field) => {
     if (buildSortBy !== field) return '⇅';
     return buildSortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  const getSubsystemSortIcon = (field) => {
+    if (subsystemSortBy !== field) return '⇅';
+    return subsystemSortOrder === 'asc' ? '↑' : '↓';
   };
 
   // Filter and sort builds
@@ -258,15 +274,6 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
           </button>
           <div className="system-title">
             <h1>{system.name}</h1>
-            <span className={`system-type ${
-              system.type === 'parent_systems' ? 'parent-system' :
-              system.type === 'subsystems' ? 'subsystem' :
-              'system'
-            }`}>
-              {system.type === 'parent_systems' ? 'Parent System' :
-               system.type === 'subsystems' ? 'Subsystem' :
-               system.type === 'systems' ? 'System' : 'System'}
-            </span>
           </div>
         </div>
         <button 
@@ -311,6 +318,13 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
               <label>System ID:</label>
               <span className="system-id">{system.id}</span>
             </div>
+            <div className="info-item">
+              <label>Status:</label>
+              <span>
+                {system.status === 'active' ? 'Active' :
+                 system.status === 'deprecated' ? 'Deprecated' : 'System'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -320,21 +334,21 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
         <div className="builds-section">
           <div className="builds-header">
             <h2>Associated Builds ({systemBuilds.length})</h2>
-            
-            {systemBuilds.length > 0 && (
-              <div className="builds-controls">
-                <div className="build-search-box">
-                  <input
-                    type="text"
-                    placeholder="Search by version or release..."
-                    value={buildSearchTerm}
-                    onChange={(e) => setBuildSearchTerm(e.target.value)}
-                    className="build-search-input"
-                  />
-                </div>
-              </div>
-            )}
           </div>
+
+          {systemBuilds.length > 0 && (
+            <div className="builds-controls">
+              <div className="search-box">
+                <input
+                  type="text"
+                  placeholder="Search by version or release..."
+                  value={buildSearchTerm}
+                  onChange={(e) => setBuildSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+          )}
 
           {systemBuilds.length > 0 ? (
             <div className="builds-table-container">
@@ -423,23 +437,6 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
               className="search-input"
             />
           </div>
-
-          <div className="sort-controls">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="sort-select"
-            >
-              <option value="name">Sort by Name</option>
-              <option value="created_at">Sort by Created Date</option>
-            </select>
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="sort-order-btn"
-            >
-              {sortOrder === 'asc' ? '⬆️' : '⬇️'}
-            </button>
-          </div>
         </div>
 
         <div className="subsystems-list">
@@ -452,80 +449,78 @@ const SystemDetail = ({ systemId, embedded = false, onBack, onNavigateToSubsyste
               </button>
             </div>
           ) : (
-            filteredAndSortedSubsystems.map(subsystem => (
-              <div key={subsystem.id} className="subsystem-card">
-                <div 
-                  className="subsystem-header"
-                  onClick={() => toggleSubsystemExpansion(subsystem.id)}
-                >
-                  <div className="subsystem-info">
-                    <div className="subsystem-title">
-                      <h3>{subsystem.name}</h3>
-                    </div>
-                    <p className="subsystem-description">{subsystem.description}</p>
-                    <div className="subsystem-meta">
-                      <span className="subsystem-date">
-                        📅 {formatDate(subsystem.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="subsystem-actions">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSubsystemClick(subsystem.id);
-                      }}
-                      className="view-btn"
-                      title="View Subsystem"
-                    >
-                      👁️
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteSubsystem(subsystem.id, e)}
-                      className="delete-btn"
-                      title="Delete Subsystem"
-                    >
-                      🗑️
-                    </button>
-                    <button className="expand-btn">
-                      {expandedSubsystems[subsystem.id] ? '▼' : '▶️'}
-                    </button>
-                  </div>
-                </div>
-
-                {expandedSubsystems[subsystem.id] && (
-                  <div className="subsystem-builds">
-                    <h4>Associated Builds</h4>
-                    {subsystemBuilds[subsystem.id] ? (
-                      subsystemBuilds[subsystem.id].length > 0 ? (
-                        <div className="builds-list">
-                          {subsystemBuilds[subsystem.id].map(build => (
-                            <div key={build.id} className="build-item">
-                              <div className="build-info">
-                                <strong>{build.system?.name || 'Unknown System'}</strong>
-                                <span className="build-version">v{build.version}</span>
+              <div className="associated-subsystems">
+                {filteredAndSortedSubsystems ? (
+                  filteredAndSortedSubsystems.length > 0 ? (
+                    <table className="subsystems-sub-table">
+                      <thead>
+                        <tr>
+                          <th
+                            onClick={() => handleSubsystemSort('name')}
+                            className="sortable"
+                          >
+                            Name {getSubsystemSortIcon('name')}
+                          </th>
+                          <th>Description</th>
+                          <th
+                            onClick={() => handleSubsystemSort('status')}
+                            className="sortable"
+                          >
+                            Status {getSubsystemSortIcon('status')}
+                          </th>
+                          <th
+                            onClick={() => handleSubsystemSort('created_at')}
+                            className="sortable"
+                          >
+                            Created At {getSubsystemSortIcon('created_at')}
+                          </th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAndSortedSubsystems.map(subsystem => (
+                          <tr key={subsystem.id}>
+                            <td>
+                              <button
+                                className="system-name-link"
+                                onClick={() => handleSubsystemClick(subsystem.id)}
+                                title="Edit subsystem"
+                              >
+                                {subsystem.name}
+                              </button>
+                            </td>
+                            <td>{subsystem.description}</td>
+                            <td className="status-cell"><span className="status-badge status-active">{subsystem.status}</span></td>
+                            <td>{formatDate(subsystem.created_at)}</td>
+                            <td className="action-cell">
+                              <div className="action-buttons">
+                                <button
+                                  onClick={() => handleSubsystemClick(subsystem.id)}
+                                  className="action-btn edit-btn"
+                                  title="Edit Subsystem"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteSubsystem(subsystem.id, e)}
+                                  className="action-btn delete-btn"
+                                  title="Delete Subsystem"
+                                >
+                                  Delete
+                                </button>
                               </div>
-                              <div className="build-meta">
-                                <span className="build-date">
-                                  {formatDate(build.build_date)}
-                                </span>
-                                <span className="build-release">
-                                  📦 {build.release?.name || 'No Release'}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="no-builds">No builds associated with this subsystem</p>
-                      )
-                    ) : (
-                      <p className="loading-builds">Loading builds...</p>
-                    )}
-                  </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="no-subsystems">No subsystems for this system</div>
+                  )
+                ) : (
+                  <div className="loading-subsystems">Loading subsystems...</div>
                 )}
               </div>
-            ))
           )}
         </div>
         </div>

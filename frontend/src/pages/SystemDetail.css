@@ -1,7 +1,7 @@
 /* System Detail Styles */
 .system-detail {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -87,19 +87,21 @@
 }
 
 .edit-system-btn {
-  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  background-color: #000000;
   color: white;
   border: none;
   padding: 12px 24px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'Inter', sans-serif;
 }
 
 .edit-system-btn:hover {
+  background-color: #333333;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
@@ -175,37 +177,32 @@
 }
 
 .create-subsystem-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background-color: #000000;
   color: white;
   border: none;
   padding: 12px 24px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'Inter', sans-serif;
 }
 
 .create-subsystem-btn:hover {
+  background-color: #333333;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 /* Builds Header */
 .builds-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 15px;
 }
 
 .builds-controls {
-  display: flex;
-  gap: 15px;
-  align-items: center;
+  margin-bottom: 25px;
 }
 
 .build-search-box {
@@ -326,6 +323,119 @@
   background: #f8f9fa;
   border-radius: 8px;
   border: 2px dashed #dee2e6;
+}
+
+/* Subsystem Table Styles */
+.subsystems-sub-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 12px;
+  font-family: 'Inter', sans-serif;
+}
+
+.subsystems-sub-table th,
+.subsystems-sub-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+  font-family: 'Inter', sans-serif;
+}
+
+.subsystems-sub-table th {
+  background-color: #f1f3f4;
+  font-weight: 600;
+  color: #495057;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.subsystems-sub-table td {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.subsystems-sub-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.subsystems-sub-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Action Button Styles */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  background-color: #000000;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.action-btn:hover {
+  background-color: #333333;
+  transform: translateY(-1px);
+}
+
+.edit-btn {
+  background-color: #000000;
+}
+
+.edit-btn:hover {
+  background-color: #333333;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+/* System Name Link Styles */
+.system-name-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  transition: color 0.2s ease;
+}
+
+.system-name-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
 }
 
 .subsystem-controls {
