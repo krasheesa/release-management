@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"release-management/internal/database"
-	"release-management/internal/models"
+	"release-management/internal/models/api"
+	"release-management/internal/models/db"
+	"release-management/internal/models/domain"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,7 +19,7 @@ func GetEnvironmentSystems(c *gin.Context) {
 	envID := c.Param("id")
 
 	// Check if environment exists
-	var environment models.Environment
+	var environment db.Environment
 	if err := database.DB.First(&environment, "id = ?", envID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
@@ -27,7 +29,7 @@ func GetEnvironmentSystems(c *gin.Context) {
 		return
 	}
 
-	var envSystems []models.EnvironmentSystem
+	var envSystems []db.EnvironmentSystem
 	if err := database.DB.Preload("System").
 		Where("environment_id = ?", envID).
 		Find(&envSystems).Error; err != nil {
@@ -36,9 +38,9 @@ func GetEnvironmentSystems(c *gin.Context) {
 	}
 
 	// Create simplified response
-	var systems []models.SimpleSystemInfo
+	var systems []api.SimpleSystemInfo
 	for _, envSystem := range envSystems {
-		systems = append(systems, models.SimpleSystemInfo{
+		systems = append(systems, api.SimpleSystemInfo{
 			SystemID:   envSystem.SystemID,
 			SystemName: envSystem.System.Name,
 			Status:     envSystem.Status,
@@ -46,7 +48,7 @@ func GetEnvironmentSystems(c *gin.Context) {
 		})
 	}
 
-	response := models.EnvironmentSystemsResponse{
+	response := api.EnvironmentSystemsResponse{
 		EnvironmentID:   environment.ID,
 		EnvironmentName: environment.Name,
 		Systems:         systems,
@@ -60,7 +62,7 @@ func GetEnvironmentSystem(c *gin.Context) {
 	envID := c.Param("id")
 	systemID := c.Param("systemId")
 
-	var envSystem models.EnvironmentSystem
+	var envSystem db.EnvironmentSystem
 	if err := database.DB.Preload("System").
 		Where("environment_id = ? AND system_id = ?", envID, systemID).
 		First(&envSystem).Error; err != nil {
@@ -79,7 +81,7 @@ func GetEnvironmentSystem(c *gin.Context) {
 		return
 	}
 
-	response := models.SimpleSystemInfo{
+	response := api.SimpleSystemInfo{
 		SystemID:   envSystem.SystemID,
 		SystemName: envSystem.System.Name,
 		Status:     envSystem.Status,
@@ -96,14 +98,14 @@ func GetEnvironmentSystem(c *gin.Context) {
 func AddSystemToEnvironment(c *gin.Context) {
 	envID := c.Param("id")
 
-	var req models.EnvironmentSystemRequest
+	var req api.EnvironmentSystemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Check if environment exists
-	var environment models.Environment
+	var environment db.Environment
 	if err := database.DB.First(&environment, "id = ?", envID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
@@ -114,8 +116,8 @@ func AddSystemToEnvironment(c *gin.Context) {
 	}
 
 	// Get the release and its builds separately
-	var release models.Release
-	var builds []models.Build
+	var release db.Release
+	var builds []db.Build
 	if err := database.DB.First(&release, "id = ?", environment.ReleaseID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment's release"})
 		return
@@ -126,7 +128,7 @@ func AddSystemToEnvironment(c *gin.Context) {
 	}
 
 	// Check if system exists
-	var system models.System
+	var system db.System
 	if err := database.DB.Preload("Subsystems").First(&system, "id = ?", req.SystemID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "System not found"})
@@ -144,20 +146,20 @@ func AddSystemToEnvironment(c *gin.Context) {
 		}
 	}()
 
-	var systemsToAdd []models.System
+	var systemsToAdd []db.System
 
 	// If it's a parent system, add all its subsystems
-	if system.Type == models.SystemTypeParent {
+	if system.Type == string(domain.SystemTypeParent) {
 		systemsToAdd = append(systemsToAdd, system.Subsystems...)
 	} else {
 		systemsToAdd = append(systemsToAdd, system)
 	}
 
-	var addedSystems []models.EnvironmentSystem
+	var addedSystems []db.EnvironmentSystem
 
 	for _, sys := range systemsToAdd {
 		// Check if system is already in environment
-		var existingEnvSystem models.EnvironmentSystem
+		var existingEnvSystem db.EnvironmentSystem
 		if err := tx.Where("environment_id = ? AND system_id = ?", envID, sys.ID).
 			First(&existingEnvSystem).Error; err == nil {
 			// System already exists, skip
@@ -187,7 +189,7 @@ func AddSystemToEnvironment(c *gin.Context) {
 		}
 
 		// Create environment system entry
-		envSystem := models.EnvironmentSystem{
+		envSystem := db.EnvironmentSystem{
 			ID:            uuid.New().String(),
 			EnvironmentID: envID,
 			SystemID:      sys.ID,
@@ -214,21 +216,21 @@ func AddSystemToEnvironment(c *gin.Context) {
 	}
 
 	// Reload with relationships for simplified response
-	var systems []models.SimpleSystemInfo
+	var systems []api.SimpleSystemInfo
 	for _, envSystem := range addedSystems {
-		var reloaded models.EnvironmentSystem
+		var reloaded db.EnvironmentSystem
 		if err := database.DB.Preload("System").Where("environment_id = ? AND system_id = ?", envSystem.EnvironmentID, envSystem.SystemID).First(&reloaded).Error; err != nil {
 			// Fallback: create response from what we have
-			var system models.System
+			var system db.System
 			database.DB.First(&system, envSystem.SystemID)
-			systems = append(systems, models.SimpleSystemInfo{
+			systems = append(systems, api.SimpleSystemInfo{
 				SystemID:   envSystem.SystemID,
 				SystemName: system.Name,
 				Status:     envSystem.Status,
 				Version:    envSystem.Version,
 			})
 		} else {
-			systems = append(systems, models.SimpleSystemInfo{
+			systems = append(systems, api.SimpleSystemInfo{
 				SystemID:   reloaded.SystemID,
 				SystemName: reloaded.System.Name,
 				Status:     reloaded.Status,
@@ -248,13 +250,13 @@ func UpdateEnvironmentSystem(c *gin.Context) {
 	envID := c.Param("id")
 	systemID := c.Param("systemId")
 
-	var req models.EnvironmentSystemUpdate
+	var req api.EnvironmentSystemUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var envSystem models.EnvironmentSystem
+	var envSystem db.EnvironmentSystem
 	if err := database.DB.Where("environment_id = ? AND system_id = ?", envID, systemID).
 		First(&envSystem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -298,7 +300,7 @@ func UpdateEnvironmentSystem(c *gin.Context) {
 	// Reload with relationships
 	database.DB.Preload("System").First(&envSystem, envSystem.ID)
 
-	response := models.SimpleSystemInfo{
+	response := api.SimpleSystemInfo{
 		SystemID:   envSystem.SystemID,
 		SystemName: envSystem.System.Name,
 		Status:     envSystem.Status,
@@ -313,7 +315,7 @@ func RemoveSystemFromEnvironment(c *gin.Context) {
 	envID := c.Param("id")
 	systemID := c.Param("systemId")
 
-	var envSystem models.EnvironmentSystem
+	var envSystem db.EnvironmentSystem
 	if err := database.DB.Where("environment_id = ? AND system_id = ?", envID, systemID).
 		First(&envSystem).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -337,7 +339,7 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 	envID := c.Param("id")
 
 	// Check if environment exists
-	var environment models.Environment
+	var environment db.Environment
 	if err := database.DB.First(&environment, "id = ?", envID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
@@ -348,8 +350,8 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 	}
 
 	// Get the release and its builds separately
-	var release models.Release
-	var builds []models.Build
+	var release db.Release
+	var builds []db.Build
 	if err := database.DB.First(&release, "id = ?", environment.ReleaseID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment's release"})
 		return
@@ -360,14 +362,14 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 	}
 
 	// Get all environment systems
-	var envSystems []models.EnvironmentSystem
+	var envSystems []db.EnvironmentSystem
 	if err := database.DB.Where("environment_id = ?", envID).Find(&envSystems).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environment systems"})
 		return
 	}
 
 	// Update versions
-	var updated []models.EnvironmentSystem
+	var updated []db.EnvironmentSystem
 	for _, envSystem := range envSystems {
 		newVersion := getSystemVersionFromRelease(builds, envSystem.SystemID)
 		if newVersion != envSystem.Version {
@@ -387,7 +389,7 @@ func SyncEnvironmentSystemVersions(c *gin.Context) {
 }
 
 // Helper function to get system version from release builds
-func getSystemVersionFromRelease(builds []models.Build, systemID string) string {
+func getSystemVersionFromRelease(builds []db.Build, systemID string) string {
 	for _, build := range builds {
 		if build.SystemID == systemID {
 			return build.Version
@@ -398,7 +400,7 @@ func getSystemVersionFromRelease(builds []models.Build, systemID string) string 
 
 // Helper function to get all available versions for a system
 func getAvailableVersionsForSystem(systemID string) ([]string, error) {
-	var builds []models.Build
+	var builds []db.Build
 	if err := database.DB.Where("system_id = ?", systemID).Find(&builds).Error; err != nil {
 		return nil, err
 	}

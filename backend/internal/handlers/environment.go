@@ -4,7 +4,10 @@ import (
 	"net/http"
 
 	"release-management/internal/database"
-	"release-management/internal/models"
+	"release-management/internal/models/api"
+	"release-management/internal/models/db"
+	"release-management/internal/models/domain"
+	"release-management/internal/models/mapper"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,9 +19,9 @@ func NewEnvironmentHandler() *EnvironmentHandler {
 }
 
 // Helper function to validate environment status
-func isValidEnvironmentStatus(status models.EnvironmentStatus) bool {
+func isValidEnvironmentStatus(status domain.EnvironmentStatus) bool {
 	switch status {
-	case models.EnvStatusActive, models.EnvStatusDecommissioned, models.EnvStatusMaintenance, models.EnvStatusPending:
+	case domain.EnvStatusActive, domain.EnvStatusDecommissioned, domain.EnvStatusMaintenance, domain.EnvStatusPending:
 		return true
 	default:
 		return false
@@ -27,131 +30,169 @@ func isValidEnvironmentStatus(status models.EnvironmentStatus) bool {
 
 // GET /environments
 func (h *EnvironmentHandler) GetEnvironments(c *gin.Context) {
-	var environments []models.Environment
-	if err := database.DB.Find(&environments).Error; err != nil {
+	var dbEnvs []db.Environment
+	if err := database.DB.Find(&dbEnvs).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch environments"})
 		return
 	}
-	c.JSON(http.StatusOK, environments)
+
+	// Convert to API responses
+	apiEnvs := make([]api.EnvironmentResponse, len(dbEnvs))
+	for i, dbEnv := range dbEnvs {
+		domainEnv := mapper.EnvironmentDBToDomain(&dbEnv)
+		apiEnv := mapper.EnvironmentDomainToAPI(domainEnv)
+		apiEnvs[i] = *apiEnv
+	}
+
+	c.JSON(http.StatusOK, apiEnvs)
 }
 
 // GET /environments/:id
 func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 	id := c.Param("id")
-	var environment models.Environment
+	var dbEnv db.Environment
 
-	if err := database.DB.First(&environment, "id = ?", id).Error; err != nil {
+	if err := database.DB.First(&dbEnv, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, environment)
+	domainEnv := mapper.EnvironmentDBToDomain(&dbEnv)
+	apiEnv := mapper.EnvironmentDomainToAPI(domainEnv)
+
+	c.JSON(http.StatusOK, apiEnv)
 }
 
 // POST /environments
 func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
-	var environment models.Environment
-	if err := c.ShouldBindJSON(&environment); err != nil {
+	var req api.EnvironmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Validate status
-	if !isValidEnvironmentStatus(environment.Status) {
+	status := domain.EnvironmentStatus(req.Status)
+	if !isValidEnvironmentStatus(status) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid environment status. Valid values are: active, decommissioned, maintenance, pending"})
 		return
 	}
 
 	// Validate that Release exists
-	var release models.Release
-	if err := database.DB.First(&release, "id = ?", environment.ReleaseID).Error; err != nil {
+	var release db.Release
+	if err := database.DB.First(&release, "id = ?", req.ReleaseID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
 		return
 	}
 
 	// Validate that EnvironmentGroup exists if provided
-	if environment.EnvironmentGroupID != nil && *environment.EnvironmentGroupID != "" {
-		var envGroup models.EnvironmentGroup
-		if err := database.DB.First(&envGroup, "id = ?", *environment.EnvironmentGroupID).Error; err != nil {
+	if req.EnvironmentGroupID != nil && *req.EnvironmentGroupID != "" {
+		var envGroup db.EnvironmentGroup
+		if err := database.DB.First(&envGroup, "id = ?", *req.EnvironmentGroupID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Environment Group not found"})
 			return
 		}
 	}
 
-	if err := database.DB.Create(&environment).Error; err != nil {
+	// Convert to domain and then to DB
+	domainEnv := mapper.EnvironmentAPIToDomain(&req)
+	dbEnv := mapper.EnvironmentDomainToDB(domainEnv)
+
+	if err := database.DB.Create(&dbEnv).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create environment"})
 		return
 	}
 
 	// Load the created environment for response
-	database.DB.First(&environment, "id = ?", environment.ID)
+	database.DB.First(dbEnv, "id = ?", dbEnv.ID)
 
-	c.JSON(http.StatusCreated, environment)
+	// Convert back for response
+	savedDomain := mapper.EnvironmentDBToDomain(dbEnv)
+	response := mapper.EnvironmentDomainToAPI(savedDomain)
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // PUT /environments/:id
 func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	id := c.Param("id")
-	var environment models.Environment
+	var dbEnv db.Environment
 
-	if err := database.DB.First(&environment, "id = ?", id).Error; err != nil {
+	if err := database.DB.First(&dbEnv, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Environment not found"})
 		return
 	}
 
-	var updates models.Environment
-	if err := c.ShouldBindJSON(&updates); err != nil {
+	var updateReq api.EnvironmentUpdateRequest
+	if err := c.ShouldBindJSON(&updateReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Validate status if provided
-	if updates.Status != "" && !isValidEnvironmentStatus(updates.Status) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid environment status. Valid values are: active, decommissioned, maintenance, pending"})
-		return
+	if updateReq.Status != "" {
+		status := domain.EnvironmentStatus(updateReq.Status)
+		if !isValidEnvironmentStatus(status) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid environment status. Valid values are: active, decommissioned, maintenance, pending"})
+			return
+		}
 	}
 
 	// Validate that Release exists if it's being updated
-	if updates.ReleaseID != "" && updates.ReleaseID != environment.ReleaseID {
-		var release models.Release
-		if err := database.DB.First(&release, "id = ?", updates.ReleaseID).Error; err != nil {
+	if updateReq.ReleaseID != "" && updateReq.ReleaseID != dbEnv.ReleaseID {
+		var release db.Release
+		if err := database.DB.First(&release, "id = ?", updateReq.ReleaseID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Release not found"})
 			return
 		}
 	}
 
 	// Validate that EnvironmentGroup exists if it's being updated
-	if updates.EnvironmentGroupID != nil && *updates.EnvironmentGroupID != "" {
+	if updateReq.EnvironmentGroupID != nil && *updateReq.EnvironmentGroupID != "" {
 		// Check if EnvironmentGroupID is actually changing
-		if environment.EnvironmentGroupID == nil || *updates.EnvironmentGroupID != *environment.EnvironmentGroupID {
-			var envGroup models.EnvironmentGroup
-			if err := database.DB.First(&envGroup, "id = ?", *updates.EnvironmentGroupID).Error; err != nil {
+		if dbEnv.EnvironmentGroupID == nil || *updateReq.EnvironmentGroupID != *dbEnv.EnvironmentGroupID {
+			var envGroup db.EnvironmentGroup
+			if err := database.DB.First(&envGroup, "id = ?", *updateReq.EnvironmentGroupID).Error; err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Environment Group not found"})
 				return
 			}
 		}
 	}
 
-	// Preserve ID and timestamps
-	updates.ID = environment.ID
-	updates.CreatedAt = environment.CreatedAt
+	// Apply updates
+	if updateReq.Name != "" {
+		dbEnv.Name = updateReq.Name
+	}
+	if updateReq.ReleaseID != "" {
+		dbEnv.ReleaseID = updateReq.ReleaseID
+	}
+	if updateReq.Status != "" {
+		dbEnv.Status = updateReq.Status
+	}
+	if updateReq.EnvironmentGroupID != nil {
+		dbEnv.EnvironmentGroupID = updateReq.EnvironmentGroupID
+	}
 
-	if err := database.DB.Save(&updates).Error; err != nil {
+	if err := database.DB.Save(&dbEnv).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update environment"})
 		return
 	}
 
 	// Load the updated environment for response
-	database.DB.First(&updates, "id = ?", updates.ID)
+	database.DB.First(&dbEnv, "id = ?", dbEnv.ID)
 
-	c.JSON(http.StatusOK, updates)
+	// Convert to response
+	domainEnv := mapper.EnvironmentDBToDomain(&dbEnv)
+	response := mapper.EnvironmentDomainToAPI(domainEnv)
+
+	c.JSON(http.StatusOK, response)
 }
 
 // DELETE /environments/:id
 func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	id := c.Param("id")
 
-	if err := database.DB.Delete(&models.Environment{}, "id = ?", id).Error; err != nil {
+	if err := database.DB.Delete(&db.Environment{}, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete environment"})
 		return
 	}
