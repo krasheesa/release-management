@@ -7,7 +7,9 @@ import (
 
 	"release-management/internal/config"
 	"release-management/internal/database"
-	"release-management/internal/models"
+	"release-management/internal/models/api"
+	"release-management/internal/models/db"
+	"release-management/internal/models/mapper"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -22,60 +24,48 @@ func NewAuthHandler(cfg *config.Config) *AuthHandler {
 	return &AuthHandler{cfg: cfg}
 }
 
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-}
-
-type AuthResponse struct {
-	Token string      `json:"token"`
-	User  models.User `json:"user"`
-}
-
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var user models.User
-	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+	var dbUser db.User
+	if err := database.DB.Where("email = ?", req.Email).First(&dbUser).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	token, err := h.generateJWT(user.ID)
+	token, err := h.generateJWT(dbUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, AuthResponse{
+	domainUser := mapper.UserDBToDomain(&dbUser)
+	userResponse := mapper.UserDomainToAPI(domainUser)
+
+	c.JSON(http.StatusOK, api.AuthResponse{
 		Token: token,
-		User:  user,
+		User:  *userResponse,
 	})
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req RegisterRequest
+	var req api.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Check if user already exists
-	var existingUser models.User
+	var existingUser db.User
 	if err := database.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
 		return
@@ -89,26 +79,29 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Create user
-	user := models.User{
+	dbUser := db.User{
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		IsAdmin:  false,
 	}
 
-	if err := database.DB.Create(&user).Error; err != nil {
+	if err := database.DB.Create(&dbUser).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
-	token, err := h.generateJWT(user.ID)
+	token, err := h.generateJWT(dbUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, AuthResponse{
+	domainUser := mapper.UserDBToDomain(&dbUser)
+	userResponse := mapper.UserDomainToAPI(domainUser)
+
+	c.JSON(http.StatusCreated, api.AuthResponse{
 		Token: token,
-		User:  user,
+		User:  *userResponse,
 	})
 }
 
@@ -119,13 +112,16 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
+	var dbUser db.User
+	if err := database.DB.First(&dbUser, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	domainUser := mapper.UserDBToDomain(&dbUser)
+	userResponse := mapper.UserDomainToAPI(domainUser)
+
+	c.JSON(http.StatusOK, userResponse)
 }
 
 func (h *AuthHandler) generateJWT(userID uint) (string, error) {
