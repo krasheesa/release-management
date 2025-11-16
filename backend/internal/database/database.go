@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"release-management/internal/config"
-	"release-management/internal/models"
+	"release-management/internal/models/db"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
@@ -32,18 +32,16 @@ func Connect(cfg *config.Config) error {
 
 	// Auto migrate the schema
 	if err := DB.AutoMigrate(
-		&models.User{},
-		&models.Release{},
-		&models.System{},
-		&models.Build{},
-		&models.EnvironmentGroup{},
-		&models.Environment{},
-		&models.EnvironmentSystem{},
+		&db.User{},
+		&db.Release{},
+		&db.System{},
+		&db.Build{},
+		&db.EnvironmentGroup{},
+		&db.Environment{},
+		&db.EnvironmentSystem{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
-	}
-
-	// Migrate system types for existing data
+	} // Migrate system types for existing data
 	if err := migrateSystemTypes(); err != nil {
 		return fmt.Errorf("failed to migrate system types: %w", err)
 	}
@@ -69,7 +67,7 @@ func Connect(cfg *config.Config) error {
 
 func seedAdminUser(cfg *config.Config) error {
 	var count int64
-	if err := DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count).Error; err != nil {
+	if err := DB.Model(&db.User{}).Where("is_admin = ?", true).Count(&count).Error; err != nil {
 		return err
 	}
 
@@ -86,7 +84,7 @@ func seedAdminUser(cfg *config.Config) error {
 	}
 
 	// Create admin user
-	adminUser := models.User{
+	adminUser := db.User{
 		Email:    cfg.Admin.Email,
 		Password: string(hashedPassword),
 		IsAdmin:  true,
@@ -111,7 +109,7 @@ func migrateSystemTypes() error {
 	log.Println("Starting system types migration...")
 
 	// Get all systems that need type assignment
-	var systems []models.System
+	var systems []db.System
 	if err := DB.Find(&systems).Error; err != nil {
 		return err
 	}
@@ -127,28 +125,26 @@ func migrateSystemTypes() error {
 				continue
 			}
 
-			var systemType models.SystemType
+			var systemType string
 
 			// Check if system has subsystems (parent_systems)
 			var subsystemCount int64
-			DB.Model(&models.System{}).Where("parent_id = ?", system.ID).Count(&subsystemCount)
+			DB.Model(&db.System{}).Where("parent_id = ?", system.ID).Count(&subsystemCount)
 
 			// Check if system has builds
 			var buildCount int64
-			DB.Model(&models.Build{}).Where("system_id = ?", system.ID).Count(&buildCount)
+			DB.Model(&db.Build{}).Where("system_id = ?", system.ID).Count(&buildCount)
 
 			if system.ParentID != nil && *system.ParentID != "" {
 				// Has parent -> subsystem
-				systemType = models.SystemTypeSubsystem
+				systemType = "subsystems"
 			} else if subsystemCount > 0 {
 				// Has subsystems -> parent_systems
-				systemType = models.SystemTypeParent
+				systemType = "parent_systems"
 			} else {
 				// Independent system -> systems
-				systemType = models.SystemTypeSystem
-			}
-
-			// Update the system type directly without triggering hooks
+				systemType = "systems"
+			} // Update the system type directly without triggering hooks
 			if err := DB.Exec("UPDATE systems SET type = ? WHERE id = ?", systemType, system.ID).Error; err != nil {
 				log.Printf("Failed to update system %s type to %s: %v", system.ID, systemType, err)
 				return err
@@ -184,13 +180,13 @@ func migrateSystemStatus() error {
 
 	// Update all existing systems that have null status to 'active'
 	var updatedCount int64
-	if err := DB.Exec("UPDATE systems SET status = ? WHERE status IS NULL OR status = ''", models.StatusActive).Error; err != nil {
+	if err := DB.Exec("UPDATE systems SET status = ? WHERE status IS NULL OR status = ''", "active").Error; err != nil {
 		log.Printf("Failed to update systems status: %v", err)
 		return err
 	}
 
 	// Get the number of updated records
-	DB.Model(&models.System{}).Where("status = ?", models.StatusActive).Count(&updatedCount)
+	DB.Model(&db.System{}).Where("status = ?", "active").Count(&updatedCount)
 
 	log.Printf("Systems status migration completed for %d system", updatedCount)
 
@@ -218,13 +214,13 @@ func migrateEnvironmentStatus() error {
 
 	// Update all existing environments that have null status to 'active'
 	var updatedCount int64
-	if err := DB.Exec("UPDATE environments SET status = ? WHERE status IS NULL OR status = ''", models.EnvStatusActive).Error; err != nil {
+	if err := DB.Exec("UPDATE environments SET status = ? WHERE status IS NULL OR status = ''", "active").Error; err != nil {
 		log.Printf("Failed to update environment status: %v", err)
 		return err
 	}
 
 	// Get the number of updated records
-	DB.Model(&models.Environment{}).Where("status = ?", models.EnvStatusActive).Count(&updatedCount)
+	DB.Model(&db.Environment{}).Where("status = ?", "active").Count(&updatedCount)
 
 	log.Printf("Environment status migration completed for %d environments", updatedCount)
 
@@ -244,12 +240,12 @@ func migrateEnvironmentGroups() error {
 
 	// Create a default environment group if none exists
 	var groupCount int64
-	DB.Model(&models.EnvironmentGroup{}).Count(&groupCount)
+	DB.Model(&db.EnvironmentGroup{}).Count(&groupCount)
 
 	var defaultGroupID string
 	if groupCount == 0 {
 		log.Println("Creating default environment group...")
-		defaultGroup := models.EnvironmentGroup{
+		defaultGroup := db.EnvironmentGroup{
 			Name:        "Default Environment Group",
 			Description: &[]string{"Default group for existing environments"}[0],
 		}
@@ -263,7 +259,7 @@ func migrateEnvironmentGroups() error {
 		log.Printf("Created default environment group with ID: %s", defaultGroupID)
 	} else {
 		// Get the first available environment group
-		var firstGroup models.EnvironmentGroup
+		var firstGroup db.EnvironmentGroup
 		if err := DB.First(&firstGroup).Error; err != nil {
 			log.Printf("Failed to get existing environment group: %v", err)
 			return err
@@ -280,7 +276,7 @@ func migrateEnvironmentGroups() error {
 	}
 
 	// Get the number of updated records
-	DB.Model(&models.Environment{}).Where("environment_group_id = ?", defaultGroupID).Count(&updatedCount)
+	DB.Model(&db.Environment{}).Where("environment_group_id = ?", defaultGroupID).Count(&updatedCount)
 
 	log.Printf("Environment groups migration completed for %d environments", updatedCount)
 	log.Println("Environment groups migration fully completed")
