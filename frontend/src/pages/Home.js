@@ -338,7 +338,7 @@ const Home = ({ activeContent: propActiveContent }) => {
       {showWelcomeModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>🎉 Welcome!</h2>
+            <h2>Welcome!</h2>
             <p>Welcome to Release Management App!</p>
             <button 
               className="modal-close-btn"
