@@ -61,12 +61,15 @@ func EnvironmentGroupDomainToAPI(domainGroup *domain.EnvironmentGroup) *api.Envi
 		UpdatedAt:   domainGroup.UpdatedAt,
 	}
 
-	// Convert relationships
 	if len(domainGroup.Environments) > 0 {
-		apiGroup.Environments = make([]api.EnvironmentResponse, len(domainGroup.Environments))
+		apiGroup.Environments = make([]api.SimplifiedEnvironmentInfo, len(domainGroup.Environments))
 		for i, env := range domainGroup.Environments {
-			if converted := EnvironmentDomainToAPI(&env); converted != nil {
-				apiGroup.Environments[i] = *converted
+			apiGroup.Environments[i] = api.SimplifiedEnvironmentInfo{
+				ID:        env.ID,
+				Name:      env.Name,
+				Type:      string(env.Type),
+				Status:    string(env.Status),
+				ReleaseID: env.ReleaseID,
 			}
 		}
 	}

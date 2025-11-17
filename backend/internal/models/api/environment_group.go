@@ -8,14 +8,23 @@ type EnvironmentGroupRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
-// EnvironmentGroupResponse represents the environment group data returned in HTTP responses
+// SimplifiedEnvironmentInfo represents minimal environment data for listings
+type SimplifiedEnvironmentInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Status    string `json:"status"`
+	ReleaseID string `json:"release_id"`
+}
+
+// EnvironmentGroup and Environment data for API responses
 type EnvironmentGroupResponse struct {
-	ID           string                `json:"id"`
-	Name         string                `json:"name"`
-	Description  *string               `json:"description,omitempty"`
-	CreatedAt    time.Time             `json:"created_at"`
-	UpdatedAt    time.Time             `json:"updated_at"`
-	Environments []EnvironmentResponse `json:"environments,omitempty"`
+	ID           string                      `json:"id"`
+	Name         string                      `json:"name"`
+	Description  *string                     `json:"description,omitempty"`
+	CreatedAt    time.Time                   `json:"created_at"`
+	UpdatedAt    time.Time                   `json:"updated_at"`
+	Environments []SimplifiedEnvironmentInfo `json:"environments,omitempty"`
 }
 
 // EnvironmentGroupUpdateRequest represents the request payload for updating an environment group
