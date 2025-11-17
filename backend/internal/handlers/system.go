@@ -312,3 +312,24 @@ func (h *SystemHandler) GetSubsystems(c *gin.Context) {
 
 	c.JSON(http.StatusOK, apiSubsystems)
 }
+
+// GET /systems/:id/builds
+func (h *SystemHandler) GetSystemBuilds(c *gin.Context) {
+	id := c.Param("id")
+	var dbBuilds []db.Build
+
+	if err := database.DB.Where("system_id = ?", id).Preload("System").Find(&dbBuilds).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch release builds"})
+		return
+	}
+
+	// Convert to API responses
+	apiBuilds := make([]api.BuildResponse, len(dbBuilds))
+	for i, dbBuild := range dbBuilds {
+		domainBuild := mapper.BuildDBToDomain(&dbBuild)
+		apiBuild := mapper.BuildDomainToAPI(domainBuild)
+		apiBuilds[i] = *apiBuild
+	}
+
+	c.JSON(http.StatusOK, apiBuilds)
+}

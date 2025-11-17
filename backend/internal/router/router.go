@@ -61,6 +61,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 			systems.PUT("/:id", systemHandler.UpdateSystem)
 			systems.DELETE("/:id", systemHandler.DeleteSystem)
 			systems.GET("/:id/subsystems", systemHandler.GetSubsystems)
+			systems.GET("/:id/builds", systemHandler.GetSystemBuilds)
 		}
 
 		// Build endpoints
