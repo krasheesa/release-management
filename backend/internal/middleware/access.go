@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"release-management/internal/database"
 	"release-management/internal/models/db"
@@ -9,18 +10,55 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HasAccess(userID int, accessName string) bool {
-	var count int64
-	err := database.DB.Table("user_role").Select("COUNT(*)").
-		Joins("JOIN roles ON user_role.role_id = roles.id").
-		Joins("JOIN role_access ON roles.id = role_access.role_id").
-		Joins("JOIN access ON role_access.access_id = access.id").
-		Where("user_role.user_id = ? AND access.access_name = ?", userID, accessName).
-		Count(&count).Error
+func matchPermission(pattern, requested string) bool {
+	if pattern == "*" {
+		return true
+	}
+
+	if pattern == requested {
+		return true
+	}
+
+	patternParts := strings.Split(pattern, ":")
+	requestedParts := strings.Split(requested, ":")
+
+	if len(patternParts) != 2 || len(requestedParts) != 2 {
+		return pattern == requested
+	}
+
+	patternResource := patternParts[0]
+	patternAction := patternParts[1]
+	requestedResource := requestedParts[0]
+	requestedAction := requestedParts[1]
+
+	resourceMatch := patternResource == "*" || patternResource == requestedResource
+
+	actionMatch := patternAction == "*" || patternAction == requestedAction
+
+	return resourceMatch && actionMatch
+}
+
+func HasAccess(userID int, requestedPermission string) bool {
+	var permissions []db.Access
+	err := database.DB.Table("access").
+		Select("access.*").
+		Joins("JOIN role_access ON access.id = role_access.access_id").
+		Joins("JOIN roles ON role_access.role_id = roles.id").
+		Joins("JOIN user_role ON roles.id = user_role.role_id").
+		Where("user_role.user_id = ?", userID).
+		Find(&permissions).Error
+
 	if err != nil {
 		return false
 	}
-	return count > 0
+
+	for _, perm := range permissions {
+		if matchPermission(perm.AccessName, requestedPermission) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func RBACMiddleware(permission string) gin.HandlerFunc {
@@ -32,7 +70,6 @@ func RBACMiddleware(permission string) gin.HandlerFunc {
 			return
 		}
 
-		// Check if user is admin - admins bypass RBAC checks
 		var user db.User
 		if err := database.DB.First(&user, userID).Error; err == nil && user.IsAdmin {
 			c.Next()

@@ -125,12 +125,51 @@ func seedAccess() error {
 		return nil
 	}
 
-	// Seed default access
+	// Seed default access with resource-based permissions
 	accesses := []db.Access{
-		{AccessName: "create"},
-		{AccessName: "read"},
-		{AccessName: "update"},
-		{AccessName: "delete"},
+		// Wildcard permissions
+		{AccessName: "*"}, // Super admin - full access to everything
+
+		// Global action permissions (applies to all resources)
+		{AccessName: "*:read"},   // Read access to all resources
+		{AccessName: "*:create"}, // Create access to all resources
+		{AccessName: "*:update"}, // Update access to all resources
+		{AccessName: "*:delete"}, // Delete access to all resources
+
+		// Resource-specific permissions - Releases
+		{AccessName: "release:read"},
+		{AccessName: "release:create"},
+		{AccessName: "release:update"},
+		{AccessName: "release:delete"},
+		{AccessName: "release:*"}, // All release operations
+
+		// Resource-specific permissions - Systems
+		{AccessName: "system:read"},
+		{AccessName: "system:create"},
+		{AccessName: "system:update"},
+		{AccessName: "system:delete"},
+		{AccessName: "system:*"}, // All system operations
+
+		// Resource-specific permissions - Builds
+		{AccessName: "build:read"},
+		{AccessName: "build:create"},
+		{AccessName: "build:update"},
+		{AccessName: "build:delete"},
+		{AccessName: "build:*"}, // All build operations
+
+		// Resource-specific permissions - Environments
+		{AccessName: "environment:read"},
+		{AccessName: "environment:create"},
+		{AccessName: "environment:update"},
+		{AccessName: "environment:delete"},
+		{AccessName: "environment:*"}, // All environment operations
+
+		// Resource-specific permissions - Environment Groups
+		{AccessName: "environment-group:read"},
+		{AccessName: "environment-group:create"},
+		{AccessName: "environment-group:update"},
+		{AccessName: "environment-group:delete"},
+		{AccessName: "environment-group:*"}, // All environment group operations
 	}
 
 	for _, access := range accesses {
@@ -167,31 +206,33 @@ func seedRoleAccess() error {
 		return err
 	}
 
-	// Get access by name
-	var createAccess, readAccess, updateAccess, deleteAccess db.Access
-	if err := DB.Where("access_name = ?", "create").First(&createAccess).Error; err != nil {
+	// Get access permissions by name
+	var wildcardAccess, globalReadAccess, globalCreateAccess, globalUpdateAccess db.Access
+	if err := DB.Where("access_name = ?", "*").First(&wildcardAccess).Error; err != nil {
 		return err
 	}
-	if err := DB.Where("access_name = ?", "read").First(&readAccess).Error; err != nil {
+	if err := DB.Where("access_name = ?", "*:read").First(&globalReadAccess).Error; err != nil {
 		return err
 	}
-	if err := DB.Where("access_name = ?", "update").First(&updateAccess).Error; err != nil {
+	if err := DB.Where("access_name = ?", "*:create").First(&globalCreateAccess).Error; err != nil {
 		return err
 	}
-	if err := DB.Where("access_name = ?", "delete").First(&deleteAccess).Error; err != nil {
+	if err := DB.Where("access_name = ?", "*:update").First(&globalUpdateAccess).Error; err != nil {
 		return err
 	}
 
-	// Seed default role access using actual IDs
+	// Seed default role access using actual IDs with new permission system
 	roleAccesses := []db.RoleAccess{
-		{RoleID: adminRole.ID, AccessID: createAccess.ID},     // admin - create
-		{RoleID: adminRole.ID, AccessID: readAccess.ID},       // admin - read
-		{RoleID: adminRole.ID, AccessID: updateAccess.ID},     // admin - update
-		{RoleID: adminRole.ID, AccessID: deleteAccess.ID},     // admin - delete
-		{RoleID: developerRole.ID, AccessID: createAccess.ID}, // developer - create
-		{RoleID: developerRole.ID, AccessID: readAccess.ID},   // developer - read
-		{RoleID: developerRole.ID, AccessID: updateAccess.ID}, // developer - update
-		{RoleID: viewerRole.ID, AccessID: readAccess.ID},      // viewer - read
+		// Admin - full access to everything
+		{RoleID: adminRole.ID, AccessID: wildcardAccess.ID},
+
+		// Developer - can create, read, and update everything
+		{RoleID: developerRole.ID, AccessID: globalCreateAccess.ID},
+		{RoleID: developerRole.ID, AccessID: globalReadAccess.ID},
+		{RoleID: developerRole.ID, AccessID: globalUpdateAccess.ID},
+
+		// Viewer - can only read everything
+		{RoleID: viewerRole.ID, AccessID: globalReadAccess.ID},
 	}
 
 	for _, ra := range roleAccesses {
