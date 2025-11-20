@@ -33,6 +33,10 @@ func Connect(cfg *config.Config) error {
 	// Auto migrate the schema
 	if err := DB.AutoMigrate(
 		&db.User{},
+		&db.UserRole{},
+		&db.Roles{},
+		&db.RoleAccess{},
+		&db.Access{},
 		&db.Release{},
 		&db.System{},
 		&db.Build{},
@@ -56,12 +60,148 @@ func Connect(cfg *config.Config) error {
 		return fmt.Errorf("failed to migrate environment groups: %w", err)
 	}
 
+	// Seed roles if they don't exist
+	if err := seedRoles(); err != nil {
+		return fmt.Errorf("failed to seed roles: %w", err)
+	}
+
+	// Seed access if they don't exist
+	if err := seedAccess(); err != nil {
+		return fmt.Errorf("failed to seed access: %w", err)
+	}
+
+	// Seed role access if they don't exist
+	if err := seedRoleAccess(); err != nil {
+		return fmt.Errorf("failed to seed role access: %w", err)
+	}
+
 	// Seed admin user if it doesn't exist
 	if err := seedAdminUser(cfg); err != nil {
 		return fmt.Errorf("failed to seed admin user: %w", err)
 	}
 
 	log.Println("Database connected successfully")
+	return nil
+}
+
+func seedRoles() error {
+	// Check if roles already exist
+	var count int64
+	if err := DB.Model(&db.Roles{}).Count(&count).Error; err != nil {
+		return err
+	}
+
+	if count > 0 {
+		log.Println("Roles already exist, skipping seeding")
+		return nil
+	}
+
+	// Seed default roles
+	roles := []db.Roles{
+		{RoleName: "admin"},
+		{RoleName: "developer"},
+		{RoleName: "viewer"},
+	}
+
+	for _, role := range roles {
+		if err := DB.Create(&role).Error; err != nil {
+			return err
+		}
+		log.Printf("Seeded role: %s", role.RoleName)
+	}
+
+	log.Println("Roles seeded successfully")
+	return nil
+}
+
+func seedAccess() error {
+	// Check if access already exist
+	var count int64
+	if err := DB.Model(&db.Access{}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		log.Println("Access already exist, skipping seeding")
+		return nil
+	}
+
+	// Seed default access
+	accesses := []db.Access{
+		{AccessName: "create"},
+		{AccessName: "read"},
+		{AccessName: "update"},
+		{AccessName: "delete"},
+	}
+
+	for _, access := range accesses {
+		if err := DB.Create(&access).Error; err != nil {
+			return err
+		}
+		log.Printf("Seeded access: %s", access.AccessName)
+	}
+
+	log.Println("Access seeded successfully")
+	return nil
+}
+
+func seedRoleAccess() error {
+	// Check if roles already exist
+	var count int64
+	if err := DB.Model(&db.RoleAccess{}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		log.Println("Role access already exist, skipping seeding")
+		return nil
+	}
+
+	// Get roles by name
+	var adminRole, developerRole, viewerRole db.Roles
+	if err := DB.Where("role_name = ?", "admin").First(&adminRole).Error; err != nil {
+		return err
+	}
+	if err := DB.Where("role_name = ?", "developer").First(&developerRole).Error; err != nil {
+		return err
+	}
+	if err := DB.Where("role_name = ?", "viewer").First(&viewerRole).Error; err != nil {
+		return err
+	}
+
+	// Get access by name
+	var createAccess, readAccess, updateAccess, deleteAccess db.Access
+	if err := DB.Where("access_name = ?", "create").First(&createAccess).Error; err != nil {
+		return err
+	}
+	if err := DB.Where("access_name = ?", "read").First(&readAccess).Error; err != nil {
+		return err
+	}
+	if err := DB.Where("access_name = ?", "update").First(&updateAccess).Error; err != nil {
+		return err
+	}
+	if err := DB.Where("access_name = ?", "delete").First(&deleteAccess).Error; err != nil {
+		return err
+	}
+
+	// Seed default role access using actual IDs
+	roleAccesses := []db.RoleAccess{
+		{RoleID: adminRole.ID, AccessID: createAccess.ID},     // admin - create
+		{RoleID: adminRole.ID, AccessID: readAccess.ID},       // admin - read
+		{RoleID: adminRole.ID, AccessID: updateAccess.ID},     // admin - update
+		{RoleID: adminRole.ID, AccessID: deleteAccess.ID},     // admin - delete
+		{RoleID: developerRole.ID, AccessID: createAccess.ID}, // developer - create
+		{RoleID: developerRole.ID, AccessID: readAccess.ID},   // developer - read
+		{RoleID: developerRole.ID, AccessID: updateAccess.ID}, // developer - update
+		{RoleID: viewerRole.ID, AccessID: readAccess.ID},      // viewer - read
+	}
+
+	for _, ra := range roleAccesses {
+		if err := DB.Create(&ra).Error; err != nil {
+			return err
+		}
+		log.Printf("Seeded role access: RoleID %d -> AccessID %d", ra.RoleID, ra.AccessID)
+	}
+
+	log.Println("Role access seeded successfully")
 	return nil
 }
 
@@ -91,6 +231,21 @@ func seedAdminUser(cfg *config.Config) error {
 	}
 
 	if err := DB.Create(&adminUser).Error; err != nil {
+		return err
+	}
+
+	// Assign admin role to the admin user
+	var adminRole db.Roles
+	if err := DB.Where("role_name = ?", "admin").First(&adminRole).Error; err != nil {
+		return err
+	}
+
+	userRole := db.UserRole{
+		UserID: adminUser.ID,
+		RoleID: adminRole.ID,
+	}
+
+	if err := DB.Create(&userRole).Error; err != nil {
 		return err
 	}
 

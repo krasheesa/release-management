@@ -90,6 +90,23 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Assign default role to the user
+	var defaultRole db.Roles
+	if err := database.DB.Where("role_name = ?", "viewer").First(&defaultRole).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role"})
+		return
+	}
+
+	userRole := db.UserRole{
+		UserID: dbUser.ID,
+		RoleID: defaultRole.ID,
+	}
+
+	if err := database.DB.Create(&userRole).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to assign role"})
+		return
+	}
+
 	token, err := h.generateJWT(dbUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
